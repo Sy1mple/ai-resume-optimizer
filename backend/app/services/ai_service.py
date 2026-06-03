@@ -136,8 +136,9 @@ class AIService:
         if task_type in {TaskType.resume_generate, TaskType.resume_beautify}:
             style_note += (
                 "\n\nProject section rules:\n"
-                "- If project_intro, project_architecture, technical_architecture, and personal_responsibilities are available, structure project experience with these four subsections.\n"
-                "- Keep the four subsection titles in the requested output language.\n"
+                "- If project description, architecture, and responsibilities are provided, merge them into compact project bullets instead of separate subsections.\n"
+                "- Project experience must appear above the Skills section in the final resume.\n"
+                "- Do not output subsection titles such as Project description, Project architecture, Technical architecture, or Personal responsibilities.\n"
             )
         if task_type in {TaskType.resume_generate, TaskType.resume_optimize, TaskType.resume_beautify}:
             style_note += (
@@ -305,11 +306,11 @@ class AIService:
 
                 {education_section}
 
-                ## {skills_title}
-                {skills_section}
-
                 ## {project_title}
                 {project_content}
+
+                ## {skills_title}
+                {skills_section}
                 """
             ).strip()
 
@@ -516,11 +517,32 @@ class AIService:
             return "\n".join(bullets)
         if "\n" in clean:
             lines = [line.strip(" -•\t") for line in clean.splitlines() if line.strip()]
-            return "\n".join(f"- {line}" for line in lines[:4])
+            return "\n".join(self._format_project_line(line, language) for line in lines[:8])
         segments = [segment.strip() for segment in re.split(r"[；;]\s*", clean) if segment.strip()]
         if len(segments) > 1:
             return "\n".join(f"- {self._format_plain_project_segment(segment, language)}" for segment in segments[:4])
         return f"- {self._ensure_sentence_end(clean, language)}"
+
+    def _format_project_line(self, text: str, language: str) -> str:
+        clean = text.strip()
+        if not clean:
+            return ""
+        name = ""
+        detail = clean
+        if ":" in clean or "：" in clean:
+            name, detail = re.split(r"[:：]", clean, maxsplit=1)
+            name = name.strip()
+            detail = detail.strip()
+        segments = [segment.strip() for segment in re.split(r"[；;]\s*", detail) if segment.strip()]
+        if not segments:
+            return f"- {self._ensure_sentence_end(clean, language)}"
+        if name and len(segments) > 1:
+            first_line = f"- **{name}:** {self._format_plain_project_segment(segments[0], language)}"
+            detail_lines = [f"- {self._format_plain_project_segment(segment, language)}" for segment in segments[1:4]]
+            return "\n".join([first_line, *detail_lines])
+        if name:
+            return f"- **{name}:** {self._format_plain_project_segment(segments[0], language)}"
+        return "\n".join(f"- {self._format_plain_project_segment(segment, language)}" for segment in segments[:4])
 
     def _join_sentence_parts(self, parts: list[str | None], language: str) -> str:
         separator = ", " if language == "en" else "，"

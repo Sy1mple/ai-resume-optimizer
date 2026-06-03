@@ -867,7 +867,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(2, minmax(420px, 1fr));
   gap: 22px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .task-panel,
@@ -885,12 +885,16 @@ h3 {
 
 .task-panel {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
   padding: 0;
   overflow: hidden;
 }
 
 .result-panel {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .task-panel .el-segmented {
@@ -899,6 +903,7 @@ h3 {
 }
 
 .form-surface {
+  flex: 1;
   margin: 16px 18px 18px;
   padding: 20px;
   border: 1px solid #dfe7ee;
@@ -978,6 +983,91 @@ h3 {
   margin-top: 1px;
 }
 
+.project-builder {
+  width: 100%;
+  border: 1px solid #dfe8ee;
+  border-radius: 8px;
+  background: #f8fbfd;
+  overflow: hidden;
+}
+
+.project-builder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid #e2ebf1;
+  background: linear-gradient(180deg, #ffffff, #f7fbfc);
+}
+
+.project-builder-head strong {
+  display: block;
+  color: #17324d;
+  font-size: 14px;
+}
+
+.project-builder-head span {
+  display: block;
+  margin-top: 4px;
+  color: #6c7d8e;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.project-collapse {
+  border: 0;
+}
+
+.project-collapse .el-collapse-item__header {
+  min-height: 66px;
+  padding: 0 14px;
+  background: #ffffff;
+  border-bottom-color: #e8eff4;
+}
+
+.project-collapse .el-collapse-item__wrap {
+  border-bottom-color: #e8eff4;
+  background: #fbfdfe;
+}
+
+.project-collapse .el-collapse-item__content {
+  padding: 14px;
+}
+
+.project-collapse-title {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: 8px;
+}
+
+.project-collapse-title strong {
+  display: block;
+  color: #17324d;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.project-collapse-title span {
+  display: block;
+  margin-top: 3px;
+  color: #718496;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.project-card-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.project-card-fields .el-form-item {
+  margin-bottom: 0;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -992,8 +1082,7 @@ h3 {
 .result-panel {
   min-height: 0;
   padding: 20px;
-  position: sticky;
-  top: 18px;
+  position: static;
 }
 
 .panel-header {
@@ -1013,8 +1102,9 @@ h3 {
 }
 
 .resume-preview {
-  min-height: 560px;
-  max-height: 780px;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
   overflow: auto;
   border: 1px solid #dbe5ec;
   border-radius: 8px;

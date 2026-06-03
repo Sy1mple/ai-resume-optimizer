@@ -269,7 +269,52 @@
                   <el-input v-model="forms.resume_generate.education" type="textarea" :rows="3" :placeholder="resumePlaceholder('education')" />
                 </el-form-item>
                 <el-form-item :label="t('projectPlan')">
-                  <el-input v-model="forms.resume_generate.projects" type="textarea" :rows="7" :placeholder="resumePlaceholder('projects')" />
+                  <div class="project-builder">
+                    <div class="project-builder-head">
+                      <div>
+                        <strong>{{ t('projectBuilderTitle') }}</strong>
+                        <span>{{ t('projectBuilderSubtitle') }}</span>
+                      </div>
+                      <el-button :icon="Plus" @click="addProject">{{ t('addProject') }}</el-button>
+                    </div>
+                    <el-collapse v-model="activeProjectPanels" class="project-collapse">
+                      <el-collapse-item
+                        v-for="(project, index) in forms.resume_generate.project_items"
+                        :key="project.id"
+                        :name="project.id"
+                      >
+                        <template #title>
+                          <div class="project-collapse-title">
+                            <div>
+                              <strong>{{ project.name.trim() || projectNamePlaceholder(index) }}</strong>
+                              <span>{{ t('projectCardSubtitle') }}</span>
+                            </div>
+                            <el-button
+                              :icon="Delete"
+                              circle
+                              size="small"
+                              :disabled="forms.resume_generate.project_items.length === 1"
+                              @click.stop="removeProject(index)"
+                            />
+                          </div>
+                        </template>
+                        <div class="project-card-fields">
+                          <el-form-item :label="t('projectName')">
+                            <el-input v-model="project.name" :placeholder="projectNamePlaceholder(index)" />
+                          </el-form-item>
+                          <el-form-item :label="t('projectDescription')">
+                            <el-input v-model="project.description" type="textarea" :rows="2" :placeholder="projectFieldPlaceholder('description')" />
+                          </el-form-item>
+                          <el-form-item :label="t('projectArchitecture')">
+                            <el-input v-model="project.architecture" type="textarea" :rows="2" :placeholder="projectFieldPlaceholder('architecture')" />
+                          </el-form-item>
+                          <el-form-item :label="t('personalResponsibilities')">
+                            <el-input v-model="project.responsibilities" type="textarea" :rows="2" :placeholder="projectFieldPlaceholder('responsibilities')" />
+                          </el-form-item>
+                        </div>
+                      </el-collapse-item>
+                    </el-collapse>
+                  </div>
                 </el-form-item>
                 <el-form-item :label="t('skills')">
                   <el-input v-model="forms.resume_generate.skills" type="textarea" :rows="3" :placeholder="resumePlaceholder('skills')" />
@@ -479,6 +524,7 @@ import {
   Download,
   Link,
   MagicStick,
+  Plus,
   Promotion,
   Refresh,
   RefreshLeft,
@@ -564,6 +610,12 @@ const messages = {
     education: 'Education',
     projects: 'Projects',
     projectPlan: 'Project experience',
+    projectBuilderTitle: 'Project portfolio',
+    projectBuilderSubtitle: 'Add several projects, then expand each one to edit its description, architecture, and responsibilities.',
+    projectCardSubtitle: 'Expand to edit structured project details',
+    addProject: 'Add project',
+    projectName: 'Project name',
+    projectDescription: 'Project description',
     projectIntro: 'Project introduction',
     projectIntroPlaceholder: 'What the project does, users served, business scenario, and core value.',
     projectArchitecture: 'Project architecture',
@@ -726,6 +778,12 @@ const messages = {
     education: '教育经历',
     projects: '项目经历',
     projectPlan: '项目经历方案',
+    projectBuilderTitle: '项目作品集',
+    projectBuilderSubtitle: '可以添加多个项目，点开后分别填写项目描述、项目架构和个人职责。',
+    projectCardSubtitle: '展开编辑结构化项目内容',
+    addProject: '添加项目',
+    projectName: '项目名称',
+    projectDescription: '项目描述',
     projectIntro: '项目介绍',
     projectIntroPlaceholder: '说明项目背景、服务对象、业务场景和核心价值。',
     projectArchitecture: '项目架构',
@@ -904,6 +962,31 @@ const defaultFormPresets = {
   }
 }
 
+const defaultProjectPresets = {
+  zh: {
+    name: '校园招聘系统',
+    description: '面向学生和企业提供职位浏览、岗位发布、简历投递和进度管理。',
+    architecture: '前端使用 Vue 3 和 Element Plus 构建工作台，后端通过 FastAPI 提供 REST API，SQL 数据库按用户、职位和投递记录拆分。',
+    responsibilities: '负责核心页面开发、接口联调、数据表设计和投递流程可用性优化。'
+  },
+  en: {
+    name: 'Campus job board',
+    description: 'Built job browsing, posting, resume submission, and application tracking workflows for students and employers.',
+    architecture: 'Used Vue 3 and Element Plus for the frontend, FastAPI REST APIs for backend services, and a SQL database split by users, job posts, and applications.',
+    responsibilities: 'Owned core page development, API integration, table design, and application flow improvements.'
+  }
+}
+
+function createBlankProject() {
+  return {
+    id: `project-${Math.random().toString(36).slice(2, 10)}`,
+    name: '',
+    description: '',
+    architecture: '',
+    responsibilities: ''
+  }
+}
+
 const cloneDefaults = () => ({
   resume_generate: {
     name: '',
@@ -911,6 +994,7 @@ const cloneDefaults = () => ({
     phone: '',
     education: '',
     projects: '',
+    project_items: [createBlankProject()],
     project_intro: '',
     project_architecture: '',
     technical_architecture: '',
@@ -942,6 +1026,7 @@ const cloneDefaults = () => ({
   }
 })
 const forms = reactive(cloneDefaults())
+const activeProjectPanels = ref(forms.resume_generate.project_items.map((project) => project.id))
 const activeTask = ref('resume_generate')
 const result = ref('')
 const loading = ref(false)
@@ -1092,12 +1177,54 @@ function resumePlaceholder(field) {
   return defaultFormPresets[locale.value]?.resume_generate?.[field] || defaultFormPresets.zh.resume_generate[field] || ''
 }
 
+function projectPreset() {
+  return defaultProjectPresets[locale.value] || defaultProjectPresets.zh
+}
+
+function projectNamePlaceholder(index = 0) {
+  const preset = projectPreset()
+  if (index === 0) {
+    return preset.name
+  }
+  return locale.value === 'zh' ? `项目 ${index + 1}` : `Project ${index + 1}`
+}
+
+function projectFieldPlaceholder(field) {
+  return projectPreset()[field] || ''
+}
+
 function resumeValue(field) {
   const value = forms.resume_generate[field]
   if (typeof value === 'string') {
     return value.trim() || resumePlaceholder(field)
   }
   return value || resumePlaceholder(field)
+}
+
+function projectHasContent(project) {
+  return ['name', 'description', 'architecture', 'responsibilities'].some((field) => project[field]?.trim())
+}
+
+function projectFieldValue(project, field, index) {
+  const value = project[field]?.trim()
+  if (value) {
+    return value
+  }
+  return field === 'name' ? projectNamePlaceholder(index) : projectFieldPlaceholder(field)
+}
+
+function addProject() {
+  const project = createBlankProject()
+  forms.resume_generate.project_items.push(project)
+  activeProjectPanels.value = [...activeProjectPanels.value, project.id]
+}
+
+function removeProject(index) {
+  if (forms.resume_generate.project_items.length === 1) {
+    return
+  }
+  const [removed] = forms.resume_generate.project_items.splice(index, 1)
+  activeProjectPanels.value = activeProjectPanels.value.filter((id) => id !== removed.id)
 }
 
 function platformLabel(platform) {
@@ -1263,7 +1390,15 @@ function stopQrPolling() {
 }
 
 function projectDraftContent() {
-  return resumeValue('projects')
+  const editedProjects = forms.resume_generate.project_items.filter(projectHasContent)
+  const projects = editedProjects.length ? editedProjects : [forms.resume_generate.project_items[0] || createBlankProject()]
+  return projects.map((project, index) => {
+    const name = projectFieldValue(project, 'name', index)
+    const description = projectFieldValue(project, 'description', index)
+    const architecture = projectFieldValue(project, 'architecture', index)
+    const responsibilities = projectFieldValue(project, 'responsibilities', index)
+    return `${name}: ${description}; ${architecture}; ${responsibilities}`
+  }).join('\n')
 }
 
 function resumeDraftLabels() {
@@ -1355,6 +1490,9 @@ async function submit() {
 
 function resetForm() {
   Object.assign(forms[activeTask.value], cloneDefaults()[activeTask.value])
+  if (activeTask.value === 'resume_generate') {
+    activeProjectPanels.value = forms.resume_generate.project_items.map((project) => project.id)
+  }
 }
 
 function saveApiKey() {
