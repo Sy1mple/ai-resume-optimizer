@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import os
+import json
 from textwrap import dedent
 from typing import Any
+from urllib import error, request
 
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except ImportError:  # pragma: no cover - keeps the free local mode dependency-light
+    OpenAI = None
 
 from app.models import (
     CoverLetterInput,
@@ -40,24 +45,38 @@ PROMPTS: dict[TaskType, str] = {
 
 class AIService:
     def __init__(self) -> None:
+        self.provider = os.getenv("AI_PROVIDER", "free").strip().lower()
         self.api_key = os.getenv("OPENAI_API_KEY", "")
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-        self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        self.openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+        self.ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
+        self.ollama_model = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+        self.ollama_timeout = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "45"))
+        self.client = (
+            OpenAI(api_key=self.api_key)
+            if self.provider == "openai" and self.api_key and OpenAI
+            else None
+        )
 
     async def generate(self, task_type: TaskType, payload: dict[str, Any]) -> tuple[str, str]:
         model = self._validate_payload(task_type, payload)
         prompt = self._build_user_prompt(task_type, model)
 
-        if not self.client:
-            return self._mock_response(task_type, model), "mock"
+        if self.provider == "ollama":
+            local_response = self._ollama_response(task_type, prompt)
+            if local_response:
+                return local_response, "ollama"
+            return self._mock_response(task_type, model), "free"
 
-        response = self.client.responses.create(
-            model=self.model,
-            instructions=PROMPTS[task_type],
-            input=prompt,
-            max_output_tokens=1400,
-        )
-        return response.output_text.strip(), "openai"
+        if self.provider == "openai" and self.client:
+            response = self.client.responses.create(
+                model=self.openai_model,
+                instructions=PROMPTS[task_type],
+                input=prompt,
+                max_output_tokens=1400,
+            )
+            return response.output_text.strip(), "openai"
+
+        return self._mock_response(task_type, model), "free"
 
     def _validate_payload(self, task_type: TaskType, payload: dict[str, Any]) -> Any:
         validators = {
@@ -80,6 +99,29 @@ class AIService:
                 "- compact-ats: plain ATS-safe structure, dense bullets, minimal decoration, and keyword clarity.\n"
             )
         return f"Task: {task_type.value}\n\nInput:\n{fields}{style_note}\n\nReturn Markdown only."
+
+    def _ollama_response(self, task_type: TaskType, prompt: str) -> str | None:
+        payload = {
+            "model": self.ollama_model,
+            "prompt": f"{PROMPTS[task_type]}\n\n{prompt}",
+            "stream": False,
+            "options": {
+                "temperature": 0.35,
+                "num_predict": 1400,
+            },
+        }
+        api_request = request.Request(
+            f"{self.ollama_base_url}/api/generate",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with request.urlopen(api_request, timeout=self.ollama_timeout) as response:
+                data = json.loads(response.read().decode("utf-8"))
+                return str(data.get("response", "")).strip() or None
+        except (OSError, TimeoutError, ValueError, error.URLError, error.HTTPError):
+            return None
 
     def _mock_response(self, task_type: TaskType, model: Any) -> str:
         if task_type == TaskType.resume_generate:

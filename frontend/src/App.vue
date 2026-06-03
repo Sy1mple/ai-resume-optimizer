@@ -108,7 +108,7 @@
         </div>
         <el-progress :percentage="resumeScore" :stroke-width="9" :show-text="false" />
         <div class="score-grid">
-          <span>ATS</span>
+          <span>{{ t('ats') }}</span>
           <b>{{ result ? t('ready') : t('draft') }}</b>
           <span>{{ t('photo') }}</span>
           <b>{{ photoDataUrl ? t('included') : t('optional') }}</b>
@@ -126,8 +126,8 @@
         </div>
         <div class="topbar-actions">
           <el-button @click="toggleLanguage">{{ languageToggleLabel }}</el-button>
-          <el-tag :type="apiSource === 'openai' ? 'success' : 'info'" effect="light">
-            {{ apiSource === 'openai' ? t('openaiActive') : t('demoMode') }}
+          <el-tag :type="sourceTagType" effect="light">
+            {{ sourceLabel }}
           </el-tag>
           <el-button text @click="logout">{{ t('logout') }}</el-button>
         </div>
@@ -149,96 +149,96 @@
             <el-form label-position="top">
               <template v-if="activeTask === 'resume_generate'">
                 <div class="grid-2">
-                  <el-form-item label="Name">
-                    <el-input v-model="forms.resume_generate.name" placeholder="Alex Chen" />
+                  <el-form-item :label="t('name')">
+                    <el-input v-model="forms.resume_generate.name" :placeholder="t('namePlaceholder')" />
                   </el-form-item>
-                  <el-form-item label="Target role">
-                    <el-input v-model="forms.resume_generate.target_role" placeholder="Frontend Developer" />
+                  <el-form-item :label="t('targetRole')">
+                    <el-input v-model="forms.resume_generate.target_role" :placeholder="t('targetRolePlaceholder')" />
                   </el-form-item>
-                  <el-form-item label="Email">
+                  <el-form-item :label="t('email')">
                     <el-input v-model="forms.resume_generate.email" placeholder="alex@example.com" />
                   </el-form-item>
-                  <el-form-item label="Phone">
+                  <el-form-item :label="t('phone')">
                     <el-input v-model="forms.resume_generate.phone" placeholder="+1 555 0100" />
                   </el-form-item>
                 </div>
-                <el-form-item label="Education">
+                <el-form-item :label="t('education')">
                   <el-input v-model="forms.resume_generate.education" type="textarea" :rows="3" />
                 </el-form-item>
-                <el-form-item label="Projects">
+                <el-form-item :label="t('projects')">
                   <el-input v-model="forms.resume_generate.projects" type="textarea" :rows="5" />
                 </el-form-item>
-                <el-form-item label="Skills">
+                <el-form-item :label="t('skills')">
                   <el-input v-model="forms.resume_generate.skills" type="textarea" :rows="3" />
                 </el-form-item>
               </template>
 
               <template v-if="activeTask === 'resume_optimize'">
-                <el-form-item label="Target role">
-                  <el-input v-model="forms.resume_optimize.target_role" placeholder="Data Analyst" />
+                <el-form-item :label="t('targetRole')">
+                  <el-input v-model="forms.resume_optimize.target_role" :placeholder="t('optimizeRolePlaceholder')" />
                 </el-form-item>
-                <el-form-item label="Resume text">
+                <el-form-item :label="t('resumeText')">
                   <el-input v-model="forms.resume_optimize.resume_text" type="textarea" :rows="12" />
                 </el-form-item>
               </template>
 
               <template v-if="activeTask === 'resume_beautify'">
                 <div class="grid-2">
-                  <el-form-item label="Target role">
-                    <el-input v-model="forms.resume_beautify.target_role" placeholder="Frontend Developer" />
+                  <el-form-item :label="t('targetRole')">
+                    <el-input v-model="forms.resume_beautify.target_role" :placeholder="t('targetRolePlaceholder')" />
                   </el-form-item>
-                  <el-form-item label="Visual style">
+                  <el-form-item :label="t('visualStyle')">
                     <el-select v-model="forms.resume_beautify.style">
-                      <el-option label="Modern" value="modern" />
-                      <el-option label="Executive" value="executive" />
-                      <el-option label="Compact ATS" value="compact-ats" />
+                      <el-option :label="t('modern')" value="modern" />
+                      <el-option :label="t('executive')" value="executive" />
+                      <el-option :label="t('compactAts')" value="compact-ats" />
                     </el-select>
                   </el-form-item>
                 </div>
-                <el-form-item label="Resume content to beautify">
+                <el-form-item :label="t('resumeContentToBeautify')">
                   <el-input v-model="forms.resume_beautify.resume_text" type="textarea" :rows="12" />
                 </el-form-item>
               </template>
 
               <template v-if="activeTask === 'cover_letter'">
                 <div class="grid-2">
-                  <el-form-item label="Company">
-                    <el-input v-model="forms.cover_letter.company_name" placeholder="Example Inc." />
+                  <el-form-item :label="t('company')">
+                    <el-input v-model="forms.cover_letter.company_name" :placeholder="t('companyPlaceholder')" />
                   </el-form-item>
-                  <el-form-item label="Job title">
-                    <el-input v-model="forms.cover_letter.job_title" placeholder="Product Intern" />
+                  <el-form-item :label="t('jobTitle')">
+                    <el-input v-model="forms.cover_letter.job_title" :placeholder="t('jobTitlePlaceholder')" />
                   </el-form-item>
                 </div>
-                <el-form-item label="Personal experience">
+                <el-form-item :label="t('personalExperience')">
                   <el-input v-model="forms.cover_letter.personal_experience" type="textarea" :rows="10" />
                 </el-form-item>
               </template>
 
               <template v-if="activeTask === 'interview_questions'">
                 <div class="grid-2">
-                  <el-form-item label="Job title">
-                    <el-input v-model="forms.interview_questions.job_title" placeholder="Backend Engineer" />
+                  <el-form-item :label="t('jobTitle')">
+                    <el-input v-model="forms.interview_questions.job_title" :placeholder="t('interviewRolePlaceholder')" />
                   </el-form-item>
-                  <el-form-item label="Experience level">
+                  <el-form-item :label="t('experienceLevel')">
                     <el-select v-model="forms.interview_questions.experience_level">
-                      <el-option label="Entry level" value="Entry level" />
-                      <el-option label="Mid level" value="Mid level" />
-                      <el-option label="Senior level" value="Senior level" />
+                      <el-option :label="t('entryLevel')" value="Entry level" />
+                      <el-option :label="t('midLevel')" value="Mid level" />
+                      <el-option :label="t('seniorLevel')" value="Senior level" />
                     </el-select>
                   </el-form-item>
                 </div>
-                <el-form-item label="Technical direction">
-                  <el-input v-model="forms.interview_questions.technical_direction" placeholder="FastAPI, databases, REST APIs" />
+                <el-form-item :label="t('technicalDirection')">
+                  <el-input v-model="forms.interview_questions.technical_direction" :placeholder="t('technicalDirectionPlaceholder')" />
                 </el-form-item>
               </template>
             </el-form>
           </div>
 
           <div class="actions">
-            <el-button :icon="RefreshLeft" @click="resetForm">Reset</el-button>
-            <el-button :icon="StarFilled" :disabled="!result" @click="prepareBeautify">Beautify current</el-button>
+            <el-button :icon="RefreshLeft" @click="resetForm">{{ t('reset') }}</el-button>
+            <el-button :icon="StarFilled" :disabled="!result" @click="prepareBeautify">{{ t('beautifyCurrent') }}</el-button>
             <el-button type="primary" :icon="MagicStick" :loading="loading" @click="submit">
-              Generate
+              {{ t('generate') }}
             </el-button>
           </div>
         </section>
@@ -246,21 +246,21 @@
         <aside class="result-panel">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">Live preview</p>
+              <p class="eyebrow">{{ t('livePreview') }}</p>
               <h3>{{ taskMeta[activeTask].title }}</h3>
             </div>
             <div class="result-tools">
               <el-button :icon="CopyDocument" circle :disabled="!result" @click="copyResult" />
               <el-dropdown trigger="click" :disabled="!result" @command="downloadResult">
                 <el-button type="primary" :icon="Download" :loading="exporting">
-                  Export
+                  {{ t('export') }}
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item command="pdf">PDF</el-dropdown-item>
-                    <el-dropdown-item command="docx">Word DOCX</el-dropdown-item>
-                    <el-dropdown-item command="md">Markdown</el-dropdown-item>
-                    <el-dropdown-item command="txt">Plain text</el-dropdown-item>
+                    <el-dropdown-item command="docx">{{ t('wordDocx') }}</el-dropdown-item>
+                    <el-dropdown-item command="md">{{ t('markdown') }}</el-dropdown-item>
+                    <el-dropdown-item command="txt">{{ t('plainText') }}</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -271,7 +271,7 @@
             <div class="preview-header">
               <img v-if="photoDataUrl" :src="photoDataUrl" alt="Candidate portrait" />
               <div>
-                <span>{{ forms.resume_generate.target_role || forms.resume_beautify.target_role || 'Target role' }}</span>
+                <span>{{ forms.resume_generate.target_role || forms.resume_beautify.target_role || t('targetRole') }}</span>
                 <strong>{{ candidateName }}</strong>
               </div>
             </div>
@@ -281,31 +281,35 @@
             </div>
             <article v-html="renderedResult"></article>
           </div>
-          <el-empty v-else description="Generate a resume, cover letter, or interview kit to preview it here." />
+          <el-empty v-else :description="t('emptyPreview')" />
         </aside>
       </div>
 
       <section class="history-section">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">History</p>
-            <h3>Recent generations</h3>
+            <p class="eyebrow">{{ t('history') }}</p>
+            <h3>{{ t('recentGenerations') }}</h3>
           </div>
           <el-button :icon="Refresh" circle :loading="historyLoading" @click="loadHistory" />
         </div>
-        <el-table :data="history" class="history-table" empty-text="No history yet">
-          <el-table-column prop="task_type" label="Task" min-width="160" />
-          <el-table-column label="Preview" min-width="360">
+        <el-table :data="history" class="history-table" :empty-text="t('noHistory')">
+          <el-table-column :label="t('task')" min-width="160">
+            <template #default="{ row }">
+              {{ formatTaskType(row.task_type) }}
+            </template>
+          </el-table-column>
+          <el-table-column :label="t('preview')" min-width="360">
             <template #default="{ row }">
               <span class="preview-text">{{ row.content }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="created_at" label="Created" min-width="180">
+          <el-table-column prop="created_at" :label="t('created')" min-width="180">
             <template #default="{ row }">
               {{ formatDate(row.created_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="Actions" width="168" fixed="right">
+          <el-table-column :label="t('actions')" width="168" fixed="right">
             <template #default="{ row }">
               <el-button :icon="View" circle @click="useHistory(row)" />
               <el-button :icon="StarFilled" circle @click="beautifyHistory(row)" />
@@ -386,12 +390,86 @@ const messages = {
     export: 'Export',
     appSubtitle: 'Build, polish, and export a complete application kit',
     openaiActive: 'OpenAI active',
-    demoMode: 'Demo mode',
+    localModelActive: 'Local model active',
+    freeLocalMode: 'Free local mode',
+    demoMode: 'Free local mode',
     logout: 'Log out',
     codeSent: 'Verification code generated',
     loginSuccess: 'Signed in',
     enterEmail: 'Please enter your email',
-    enterCode: 'Please enter the verification code'
+    enterCode: 'Please enter the verification code',
+    ats: 'ATS',
+    name: 'Name',
+    namePlaceholder: 'Alex Chen',
+    targetRole: 'Target role',
+    targetRolePlaceholder: 'Frontend Developer',
+    optimizeRolePlaceholder: 'Data Analyst',
+    phone: 'Phone',
+    education: 'Education',
+    projects: 'Projects',
+    skills: 'Skills',
+    resumeText: 'Resume text',
+    visualStyle: 'Visual style',
+    modern: 'Modern',
+    executive: 'Executive',
+    compactAts: 'Compact ATS',
+    resumeContentToBeautify: 'Resume content to beautify',
+    company: 'Company',
+    companyPlaceholder: 'Example Inc.',
+    jobTitle: 'Job title',
+    jobTitlePlaceholder: 'Product Intern',
+    personalExperience: 'Personal experience',
+    interviewRolePlaceholder: 'Backend Engineer',
+    experienceLevel: 'Experience level',
+    entryLevel: 'Entry level',
+    midLevel: 'Mid level',
+    seniorLevel: 'Senior level',
+    technicalDirection: 'Technical direction',
+    technicalDirectionPlaceholder: 'FastAPI, databases, REST APIs',
+    reset: 'Reset',
+    beautifyCurrent: 'Beautify current',
+    generate: 'Generate',
+    livePreview: 'Live preview',
+    wordDocx: 'Word DOCX',
+    markdown: 'Markdown',
+    plainText: 'Plain text',
+    emptyPreview: 'Generate a resume, cover letter, or interview kit to preview it here.',
+    history: 'History',
+    recentGenerations: 'Recent generations',
+    noHistory: 'No history yet',
+    task: 'Task',
+    preview: 'Preview',
+    created: 'Created',
+    actions: 'Actions',
+    taskGenerate: 'Generate',
+    taskOptimize: 'Optimize',
+    taskBeautify: 'Beautify',
+    taskLetter: 'Letter',
+    taskInterview: 'Interview',
+    resumeGenerator: 'Resume generator',
+    resumeGeneratorSubtitle: 'Create a recruiter-ready resume from structured profile details.',
+    resumeOptimizer: 'Resume optimizer',
+    resumeOptimizerSubtitle: 'Rewrite rough resume text into stronger professional bullet points.',
+    oneClickBeautifier: 'One-click beautifier',
+    oneClickBeautifierSubtitle: 'Turn the current draft into a polished, formatted resume layout.',
+    coverLetter: 'Cover letter',
+    coverLetterSubtitle: 'Generate a tailored letter for a company and role.',
+    interviewCoach: 'Interview coach',
+    interviewCoachSubtitle: 'Prepare technical and behavioral questions with reference answers.',
+    styleModernDescription: 'Editorial spacing, color accents, portfolio-ready rhythm',
+    styleExecutiveDescription: 'Formal typography, strong contrast, leadership framing',
+    styleCompactDescription: 'Dense structure, monochrome hierarchy, scanner-friendly',
+    generatedSuccessfully: 'Generated successfully',
+    generationFailed: 'Generation failed',
+    copied: 'Copied',
+    downloaded: 'Downloaded',
+    exportFailed: 'Export failed',
+    uploadImageOnly: 'Please upload an image file',
+    imageTooLarge: 'Image must be smaller than 1.2 MB',
+    deleted: 'Deleted',
+    loginFailed: 'Login failed',
+    codeRequestFailed: 'Code request failed',
+    qrCodeFailed: 'QR code failed'
   },
   zh: {
     loginEyebrow: '安全入口',
@@ -431,48 +509,86 @@ const messages = {
     export: '导出',
     appSubtitle: '生成、优化并导出完整求职材料',
     openaiActive: 'OpenAI 已启用',
-    demoMode: '演示模式',
+    localModelActive: '本地模型已启用',
+    freeLocalMode: '免费本地模式',
+    demoMode: '免费本地模式',
     logout: '退出',
     codeSent: '验证码已生成',
     loginSuccess: '登录成功',
     enterEmail: '请输入邮箱',
-    enterCode: '请输入验证码'
-  }
-}
-
-const taskOptions = [
-  { label: 'Generate', value: 'resume_generate' },
-  { label: 'Optimize', value: 'resume_optimize' },
-  { label: 'Beautify', value: 'resume_beautify' },
-  { label: 'Letter', value: 'cover_letter' },
-  { label: 'Interview', value: 'interview_questions' }
-]
-
-const taskMeta = {
-  resume_generate: {
-    title: 'Resume generator',
-    subtitle: 'Create a recruiter-ready resume from structured profile details.',
-    icon: DocumentChecked
-  },
-  resume_optimize: {
-    title: 'Resume optimizer',
-    subtitle: 'Rewrite rough resume text into stronger professional bullet points.',
-    icon: MagicStick
-  },
-  resume_beautify: {
-    title: 'One-click beautifier',
-    subtitle: 'Turn the current draft into a polished, formatted resume layout.',
-    icon: StarFilled
-  },
-  cover_letter: {
-    title: 'Cover letter',
-    subtitle: 'Generate a tailored letter for a company and role.',
-    icon: Message
-  },
-  interview_questions: {
-    title: 'Interview coach',
-    subtitle: 'Prepare technical and behavioral questions with reference answers.',
-    icon: UserFilled
+    enterCode: '请输入验证码',
+    ats: 'ATS',
+    name: '姓名',
+    namePlaceholder: '陈同学',
+    targetRole: '目标岗位',
+    targetRolePlaceholder: '前端开发工程师',
+    optimizeRolePlaceholder: '数据分析师',
+    phone: '电话',
+    education: '教育经历',
+    projects: '项目经历',
+    skills: '技能',
+    resumeText: '简历文本',
+    visualStyle: '视觉风格',
+    modern: '现代风',
+    executive: '商务风',
+    compactAts: '紧凑 ATS',
+    resumeContentToBeautify: '需要美化的简历内容',
+    company: '公司',
+    companyPlaceholder: '示例科技',
+    jobTitle: '职位名称',
+    jobTitlePlaceholder: '产品实习生',
+    personalExperience: '个人经历',
+    interviewRolePlaceholder: '后端工程师',
+    experienceLevel: '经验等级',
+    entryLevel: '初级',
+    midLevel: '中级',
+    seniorLevel: '高级',
+    technicalDirection: '技术方向',
+    technicalDirectionPlaceholder: 'FastAPI、数据库、REST API',
+    reset: '重置',
+    beautifyCurrent: '美化当前内容',
+    generate: '生成',
+    livePreview: '实时预览',
+    wordDocx: 'Word DOCX',
+    markdown: 'Markdown',
+    plainText: '纯文本',
+    emptyPreview: '生成简历、求职信或面试题后，会在这里预览。',
+    history: '历史记录',
+    recentGenerations: '最近生成',
+    noHistory: '暂无历史记录',
+    task: '任务',
+    preview: '预览',
+    created: '创建时间',
+    actions: '操作',
+    taskGenerate: '生成',
+    taskOptimize: '优化',
+    taskBeautify: '美化',
+    taskLetter: '求职信',
+    taskInterview: '面试',
+    resumeGenerator: '简历生成',
+    resumeGeneratorSubtitle: '根据结构化资料生成适合招聘查看的简历。',
+    resumeOptimizer: '简历优化',
+    resumeOptimizerSubtitle: '把粗糙简历改写成更专业、更有结果导向的表达。',
+    oneClickBeautifier: '一键美化',
+    oneClickBeautifierSubtitle: '把当前草稿整理成更精致的版式和表达。',
+    coverLetter: '求职信',
+    coverLetterSubtitle: '根据公司和岗位生成有针对性的求职信。',
+    interviewCoach: '面试助手',
+    interviewCoachSubtitle: '生成技术题、行为题和参考回答。',
+    styleModernDescription: '留白更舒适，带强调色，适合作品集式展示',
+    styleExecutiveDescription: '正式排版，高对比，突出职业感和领导力表达',
+    styleCompactDescription: '高密度、黑白结构，更适合 ATS 扫描',
+    generatedSuccessfully: '生成成功',
+    generationFailed: '生成失败',
+    copied: '已复制',
+    downloaded: '已下载',
+    exportFailed: '导出失败',
+    uploadImageOnly: '请上传图片文件',
+    imageTooLarge: '图片大小必须小于 1.2 MB',
+    deleted: '已删除',
+    loginFailed: '登录失败',
+    codeRequestFailed: '验证码请求失败',
+    qrCodeFailed: '二维码生成失败'
   }
 }
 
@@ -517,7 +633,7 @@ const loading = ref(false)
 const exporting = ref(false)
 const historyLoading = ref(false)
 const history = ref([])
-const apiSource = ref('mock')
+const apiSource = ref('free')
 const photoInput = ref(null)
 const photoDataUrl = ref('')
 const authStorageKey = 'resume_user_v4'
@@ -539,6 +655,20 @@ let qrPollTimer = null
 
 const candidateName = computed(() => forms.resume_generate.name || 'Candidate')
 const languageToggleLabel = computed(() => (locale.value === 'zh' ? 'English' : '中文'))
+const sourceTagType = computed(() => {
+  if (apiSource.value === 'openai') return 'success'
+  if (apiSource.value === 'ollama') return 'warning'
+  return 'info'
+})
+const sourceLabel = computed(() => {
+  const labels = {
+    openai: t('openaiActive'),
+    ollama: t('localModelActive'),
+    free: t('freeLocalMode'),
+    mock: t('freeLocalMode')
+  }
+  return labels[apiSource.value] || t('freeLocalMode')
+})
 const resumeScore = computed(() => {
   let score = 28
   if (forms.resume_generate.name) score += 8
@@ -554,20 +684,56 @@ const activeVisualStyle = computed(() => forms.resume_beautify.style || 'modern'
 const previewStyleClass = computed(() => `resume-style-${activeVisualStyle.value}`)
 const styleLabel = computed(() => {
   const labels = {
-    modern: 'Modern',
-    executive: 'Executive',
-    'compact-ats': 'Compact ATS'
+    modern: t('modern'),
+    executive: t('executive'),
+    'compact-ats': t('compactAts')
   }
-  return labels[activeVisualStyle.value] || 'Modern'
+  return labels[activeVisualStyle.value] || t('modern')
 })
 const styleDescriptor = computed(() => {
   const descriptions = {
-    modern: 'Editorial spacing, color accents, portfolio-ready rhythm',
-    executive: 'Formal typography, strong contrast, leadership framing',
-    'compact-ats': 'Dense structure, monochrome hierarchy, scanner-friendly'
+    modern: t('styleModernDescription'),
+    executive: t('styleExecutiveDescription'),
+    'compact-ats': t('styleCompactDescription')
   }
   return descriptions[activeVisualStyle.value] || descriptions.modern
 })
+
+const taskOptions = computed(() => [
+  { label: t('taskGenerate'), value: 'resume_generate' },
+  { label: t('taskOptimize'), value: 'resume_optimize' },
+  { label: t('taskBeautify'), value: 'resume_beautify' },
+  { label: t('taskLetter'), value: 'cover_letter' },
+  { label: t('taskInterview'), value: 'interview_questions' }
+])
+
+const taskMeta = computed(() => ({
+  resume_generate: {
+    title: t('resumeGenerator'),
+    subtitle: t('resumeGeneratorSubtitle'),
+    icon: DocumentChecked
+  },
+  resume_optimize: {
+    title: t('resumeOptimizer'),
+    subtitle: t('resumeOptimizerSubtitle'),
+    icon: MagicStick
+  },
+  resume_beautify: {
+    title: t('oneClickBeautifier'),
+    subtitle: t('oneClickBeautifierSubtitle'),
+    icon: StarFilled
+  },
+  cover_letter: {
+    title: t('coverLetter'),
+    subtitle: t('coverLetterSubtitle'),
+    icon: Message
+  },
+  interview_questions: {
+    title: t('interviewCoach'),
+    subtitle: t('interviewCoachSubtitle'),
+    icon: UserFilled
+  }
+}))
 
 function t(key) {
   return messages[locale.value]?.[key] || messages.en[key] || key
@@ -596,7 +762,7 @@ async function sendCode() {
     emailForm.code = response.dev_code
     ElMessage.success(t('codeSent'))
   } catch {
-    ElMessage.error('Code request failed')
+    ElMessage.error(t('codeRequestFailed'))
   } finally {
     sendingCode.value = false
   }
@@ -615,7 +781,7 @@ async function loginWithEmail() {
   try {
     saveUser(await verifyEmailCode(emailForm.email, emailForm.code))
   } catch (error) {
-    ElMessage.error(error.response?.data?.detail || 'Login failed')
+    ElMessage.error(error.response?.data?.detail || t('loginFailed'))
   } finally {
     loggingIn.value = false
   }
@@ -656,7 +822,7 @@ async function startQrSession(provider) {
     })
     qrPollTimer = window.setInterval(pollQrSession, 1800)
   } catch {
-    ElMessage.error('QR code failed')
+    ElMessage.error(t('qrCodeFailed'))
   }
 }
 
@@ -701,10 +867,10 @@ async function submit() {
       forms.resume_beautify.target_role = forms.resume_generate.target_role || forms.resume_optimize.target_role
     }
     await loadHistory()
-    ElMessage.success('Generated successfully')
+    ElMessage.success(t('generatedSuccessfully'))
   } catch (error) {
     const detail = error.response?.data?.detail
-    ElMessage.error(Array.isArray(detail) ? detail[0]?.msg : detail || 'Generation failed')
+    ElMessage.error(Array.isArray(detail) ? detail[0]?.msg : detail || t('generationFailed'))
   } finally {
     loading.value = false
   }
@@ -723,7 +889,7 @@ function prepareBeautify() {
 
 async function copyResult() {
   await navigator.clipboard.writeText(result.value)
-  ElMessage.success('Copied')
+  ElMessage.success(t('copied'))
 }
 
 async function downloadResult(format) {
@@ -745,9 +911,9 @@ async function downloadResult(format) {
     link.click()
     link.remove()
     URL.revokeObjectURL(url)
-    ElMessage.success(`Downloaded ${filename}`)
+    ElMessage.success(`${t('downloaded')} ${filename}`)
   } catch {
-    ElMessage.error('Export failed')
+    ElMessage.error(t('exportFailed'))
   } finally {
     exporting.value = false
   }
@@ -757,11 +923,11 @@ function handlePhotoUpload(event) {
   const file = event.target.files?.[0]
   if (!file) return
   if (!file.type.startsWith('image/')) {
-    ElMessage.error('Please upload an image file')
+    ElMessage.error(t('uploadImageOnly'))
     return
   }
   if (file.size > 1.2 * 1024 * 1024) {
-    ElMessage.error('Image must be smaller than 1.2 MB')
+    ElMessage.error(t('imageTooLarge'))
     return
   }
   const reader = new FileReader()
@@ -796,7 +962,11 @@ function beautifyHistory(row) {
 async function removeHistory(id) {
   await deleteHistoryRecord(id)
   await loadHistory()
-  ElMessage.success('Deleted')
+  ElMessage.success(t('deleted'))
+}
+
+function formatTaskType(taskType) {
+  return taskOptions.value.find((item) => item.value === taskType)?.label || taskType
 }
 
 function formatDate(value) {

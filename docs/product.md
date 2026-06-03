@@ -26,4 +26,5 @@ AI Resume Optimizer helps students and job seekers produce better job applicatio
 - API keys stay on the backend.
 - Input length is limited by Pydantic validation.
 - The app is responsive for desktop and mobile.
-- Mock generation keeps demos usable without external services.
+- Free local generation keeps demos usable without external services or paid API usage.
+- Optional Ollama support can run a local model on the user's machine when available.

@@ -43,9 +43,15 @@ Response:
   "task_type": "cover_letter",
   "content": "Markdown content",
   "history_id": "uuid",
-  "source": "mock"
+  "source": "free"
 }
 ```
+
+`source` can be:
+
+- `free`: no-cost local rule-based generation
+- `ollama`: no-cost local model through Ollama
+- `openai`: OpenAI API generation, used only when `AI_PROVIDER=openai`
 
 ## GET `/api/history`
 

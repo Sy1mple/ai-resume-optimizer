@@ -14,7 +14,7 @@ It includes:
 
 - Frontend: Vue 3, JavaScript, Vite, Element Plus, Axios
 - Backend: FastAPI, Python
-- AI: OpenAI API, with deterministic mock output when no API key is configured
+- AI: free local rule-based generation by default, optional local Ollama model, optional OpenAI API
 - Database: Supabase optional, in-memory fallback for local demos
 
 ## Project Structure
@@ -57,7 +57,7 @@ copy .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-The backend works without an OpenAI key by returning mock content. To enable real AI generation, set `OPENAI_API_KEY` in `backend/.env`.
+The backend works without an OpenAI key and does not spend money by default. `AI_PROVIDER=free` returns local rule-based content. If you install Ollama locally, set `AI_PROVIDER=ollama` to use a local model. Only set `AI_PROVIDER=openai` when you intentionally want to call the paid OpenAI API.
 
 ### Frontend
 
@@ -73,8 +73,11 @@ Open the Vite URL printed in the terminal. The default API base URL is `http://l
 
 Backend:
 
+- `AI_PROVIDER`: `free`, `ollama`, or `openai`; defaults to `free`
 - `OPENAI_API_KEY`: optional OpenAI API key
 - `OPENAI_MODEL`: optional model name, defaults to `gpt-4.1-mini`
+- `OLLAMA_BASE_URL`: optional local Ollama URL, defaults to `http://127.0.0.1:11434`
+- `OLLAMA_MODEL`: optional local Ollama model, defaults to `qwen2.5:3b`
 - `SUPABASE_URL`: optional Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY`: optional Supabase service role key
 
