@@ -14,6 +14,22 @@
           <span>{{ t('loginStatTwo') }}</span>
           <span>{{ t('loginStatThree') }}</span>
         </div>
+        <div class="login-product-preview" aria-hidden="true">
+          <div class="preview-paper preview-paper-main">
+            <span></span>
+            <b></b>
+            <i></i>
+            <i></i>
+            <i></i>
+          </div>
+          <div class="preview-paper preview-paper-side">
+            <span></span>
+            <i></i>
+            <i></i>
+          </div>
+          <div class="preview-floating-chip">PDF</div>
+          <div class="preview-floating-chip preview-chip-alt">ATS 92</div>
+        </div>
       </div>
 
       <div class="login-panel" :class="{ 'login-panel-qr': qrMode }">
@@ -116,6 +132,13 @@
           <b>PDF / DOCX / MD</b>
         </div>
       </section>
+
+      <nav class="side-rail" aria-label="Workspace sections">
+        <span class="active">{{ t('taskGenerate') }}</span>
+        <span>{{ t('taskBeautify') }}</span>
+        <span>{{ t('export') }}</span>
+        <span>{{ t('history') }}</span>
+      </nav>
     </aside>
 
     <section class="main-workspace">
@@ -132,6 +155,21 @@
           <el-button text @click="logout">{{ t('logout') }}</el-button>
         </div>
       </header>
+
+      <section class="topbar-metrics" aria-label="Workspace status">
+        <div>
+          <span>{{ t('ats') }}</span>
+          <strong>{{ result ? t('ready') : t('draft') }}</strong>
+        </div>
+        <div>
+          <span>{{ t('visualStyle') }}</span>
+          <strong>{{ styleLabel }}</strong>
+        </div>
+        <div>
+          <span>{{ t('export') }}</span>
+          <strong>PDF / DOCX / TXT</strong>
+        </div>
+      </section>
 
       <div class="workspace-grid">
         <section class="task-panel">
