@@ -104,17 +104,29 @@
         <div>
           <p class="eyebrow">{{ t('resumeStudio') }}</p>
           <h1>{{ t('careerPackBuilder') }}</h1>
+          <span class="workspace-badge">{{ t('proWorkspace') }}</span>
         </div>
       </div>
 
       <section class="profile-card">
-        <div class="photo-upload">
-          <img v-if="photoDataUrl" :src="photoDataUrl" alt="Candidate portrait" />
-          <UserFilled v-else class="photo-placeholder" />
-          <input ref="photoInput" type="file" accept="image/*" @change="handlePhotoUpload" />
+        <div class="account-row">
+          <div class="account-avatar">{{ userInitial }}</div>
+          <div>
+            <p>{{ currentUser.display_name || t('candidateAccount') }}</p>
+            <span>{{ currentUser.email || currentUser.provider }}</span>
+          </div>
         </div>
-        <el-button :icon="Upload" @click="photoInput?.click()">{{ t('uploadPhoto') }}</el-button>
-        <el-button v-if="photoDataUrl" :icon="Delete" text @click="photoDataUrl = ''">{{ t('remove') }}</el-button>
+        <div class="photo-row">
+          <div class="photo-upload">
+            <img v-if="photoDataUrl" :src="photoDataUrl" alt="Candidate portrait" />
+            <UserFilled v-else class="photo-placeholder" />
+            <input ref="photoInput" type="file" accept="image/*" @change="handlePhotoUpload" />
+          </div>
+          <div class="photo-actions">
+            <el-button :icon="Upload" @click="photoInput?.click()">{{ t('uploadPhoto') }}</el-button>
+            <el-button v-if="photoDataUrl" :icon="Delete" text @click="photoDataUrl = ''">{{ t('remove') }}</el-button>
+          </div>
+        </div>
       </section>
 
       <section class="score-card">
@@ -134,12 +146,50 @@
       </section>
 
       <nav class="side-rail" aria-label="Workspace sections">
-        <span :class="{ active: activeTask === 'resume_generate' }" @click="activeTask = 'resume_generate'">{{ t('taskGenerate') }}</span>
-        <span :class="{ active: activeTask === 'job_match' }" @click="activeTask = 'job_match'">{{ t('taskJobMatch') }}</span>
-        <span :class="{ active: activeTask === 'interview_questions' }" @click="activeTask = 'interview_questions'">{{ t('taskInterview') }}</span>
-        <span>{{ t('export') }}</span>
-        <span>{{ t('history') }}</span>
+        <p class="nav-label">{{ t('navWorkflow') }}</p>
+        <button
+          v-for="item in sideNavItems"
+          :key="item.value"
+          :class="{ active: activeTask === item.value }"
+          @click="activeTask = item.value"
+        >
+          <component :is="item.icon" />
+          <span>
+            <b>{{ item.label }}</b>
+            <small>{{ item.subtitle }}</small>
+          </span>
+          <i>{{ item.metric }}</i>
+        </button>
+        <p class="nav-label">{{ t('navAssets') }}</p>
+        <button class="secondary-nav" @click="openSidebarShortcut('export')">
+          <Download />
+          <span>
+            <b>{{ t('export') }}</b>
+            <small>PDF / DOCX / MD</small>
+          </span>
+        </button>
+        <button class="secondary-nav" @click="openSidebarShortcut('history')">
+          <Refresh />
+          <span>
+            <b>{{ t('history') }}</b>
+            <small>{{ history.length }} {{ t('records') }}</small>
+          </span>
+        </button>
       </nav>
+
+      <section class="sidebar-insight">
+        <p class="eyebrow">{{ t('pipelineOverview') }}</p>
+        <div class="insight-grid">
+          <span>
+            <b>{{ resumeScore }}%</b>
+            {{ t('completion') }}
+          </span>
+          <span>
+            <b>{{ selectedPlatforms.length }}</b>
+            {{ t('channels') }}
+          </span>
+        </div>
+      </section>
     </aside>
 
     <section class="main-workspace">
@@ -385,7 +435,7 @@
         </aside>
       </div>
 
-      <section class="history-section">
+      <section id="history-section" class="history-section">
         <div class="panel-header">
           <div>
             <p class="eyebrow">{{ t('history') }}</p>
@@ -481,6 +531,8 @@ const messages = {
     emailRegister: 'Register / Sign in',
     resumeStudio: 'Resume Studio',
     careerPackBuilder: 'Career Pack Builder',
+    proWorkspace: 'Pro workspace',
+    candidateAccount: 'Candidate account',
     uploadPhoto: 'Upload photo',
     remove: 'Remove',
     resumeReadiness: 'Resume readiness',
@@ -593,7 +645,17 @@ const messages = {
     statusApplied: 'Applied',
     statusFollowUp: 'Follow up',
     openDelivery: 'Open delivery',
-    aiMatchReport: 'AI match report'
+    aiMatchReport: 'AI match report',
+    navWorkflow: 'Workflow',
+    navAssets: 'Assets',
+    records: 'records',
+    pipelineOverview: 'Pipeline overview',
+    completion: 'Complete',
+    channels: 'Channels',
+    navGenerateSubtitle: 'Resume drafting',
+    navMatchSubtitle: 'Job delivery',
+    navInterviewSubtitle: 'Interview prep',
+    noExportYet: 'Generate content before exporting'
   },
   zh: {
     loginEyebrow: '安全入口',
@@ -622,6 +684,8 @@ const messages = {
     emailRegister: '注册 / 登录',
     resumeStudio: '简历工作室',
     careerPackBuilder: '求职材料生成器',
+    proWorkspace: '专业工作区',
+    candidateAccount: '候选人账户',
     uploadPhoto: '上传照片',
     remove: '移除',
     resumeReadiness: '简历完成度',
@@ -734,7 +798,17 @@ const messages = {
     statusApplied: '已投递',
     statusFollowUp: '待跟进',
     openDelivery: '打开投递',
-    aiMatchReport: 'AI 匹配报告'
+    aiMatchReport: 'AI 匹配报告',
+    navWorkflow: '工作流',
+    navAssets: '资产',
+    records: '条记录',
+    pipelineOverview: '流程概览',
+    completion: '完成度',
+    channels: '渠道',
+    navGenerateSubtitle: '简历生成优化',
+    navMatchSubtitle: '岗位匹配投放',
+    navInterviewSubtitle: '面试题准备',
+    noExportYet: '请先生成内容再导出'
   }
 }
 
@@ -804,6 +878,10 @@ const applicationStatuses = reactive({})
 let qrPollTimer = null
 
 const candidateName = computed(() => forms.resume_generate.name || 'Candidate')
+const userInitial = computed(() => {
+  const name = currentUser.value?.display_name || currentUser.value?.email || 'AI'
+  return String(name).slice(0, 1).toUpperCase()
+})
 const languageToggleLabel = computed(() => (locale.value === 'zh' ? 'English' : '中文'))
 const resumeScore = computed(() => {
   let score = 28
@@ -872,6 +950,29 @@ const taskOptions = computed(() => [
   { label: t('taskJobMatch'), value: 'job_match' },
   { label: t('taskInterview'), value: 'interview_questions' }
 ])
+const sideNavItems = computed(() => [
+  {
+    value: 'resume_generate',
+    label: t('taskGenerate'),
+    subtitle: t('navGenerateSubtitle'),
+    metric: `${resumeScore.value}%`,
+    icon: DocumentChecked
+  },
+  {
+    value: 'job_match',
+    label: t('taskJobMatch'),
+    subtitle: t('navMatchSubtitle'),
+    metric: `${jobMatchScore.value}%`,
+    icon: Briefcase
+  },
+  {
+    value: 'interview_questions',
+    label: t('taskInterview'),
+    subtitle: t('navInterviewSubtitle'),
+    metric: forms.interview_questions.experience_level,
+    icon: UserFilled
+  }
+])
 
 const taskMeta = computed(() => ({
   resume_generate: {
@@ -933,6 +1034,18 @@ function platformSearchUrl(platform, job) {
 function openJobPortal(job) {
   applicationStatuses[job.id] = applicationStatuses[job.id] === 'applied' ? 'applied' : 'opened'
   window.open(platformSearchUrl(job.platform, job), '_blank', 'noopener,noreferrer')
+}
+
+function openSidebarShortcut(target) {
+  if (target === 'history') {
+    document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+  if (!result.value) {
+    ElMessage.warning(t('noExportYet'))
+    return
+  }
+  downloadResult('pdf')
 }
 
 function toggleLanguage() {
