@@ -5,10 +5,11 @@ const api = axios.create({
   timeout: 20000
 })
 
-export async function generateContent(taskType, payload) {
+export async function generateContent(taskType, payload, aiProvider = 'free') {
   const { data } = await api.post('/api/generate', {
     task_type: taskType,
-    payload
+    payload,
+    ai_provider: aiProvider
   })
   return data
 }

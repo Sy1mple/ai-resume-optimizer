@@ -51,24 +51,29 @@ class AIService:
         self.ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
         self.ollama_model = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
         self.ollama_timeout = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "45"))
-        self.client = (
-            OpenAI(api_key=self.api_key)
-            if self.provider == "openai" and self.api_key and OpenAI
-            else None
-        )
+        self.client = self._openai_client() if self.provider == "openai" else None
 
-    async def generate(self, task_type: TaskType, payload: dict[str, Any]) -> tuple[str, str]:
+    async def generate(
+        self,
+        task_type: TaskType,
+        payload: dict[str, Any],
+        provider: str | None = None,
+    ) -> tuple[str, str]:
         model = self._validate_payload(task_type, payload)
         prompt = self._build_user_prompt(task_type, model)
+        active_provider = (provider or self.provider or "free").strip().lower()
 
-        if self.provider == "ollama":
+        if active_provider == "ollama":
             local_response = self._ollama_response(task_type, prompt)
             if local_response:
                 return local_response, "ollama"
             return self._mock_response(task_type, model), "free"
 
-        if self.provider == "openai" and self.client:
-            response = self.client.responses.create(
+        if active_provider == "openai":
+            client = self.client or self._openai_client()
+            if not client:
+                return self._mock_response(task_type, model), "free"
+            response = client.responses.create(
                 model=self.openai_model,
                 instructions=PROMPTS[task_type],
                 input=prompt,
@@ -77,6 +82,9 @@ class AIService:
             return response.output_text.strip(), "openai"
 
         return self._mock_response(task_type, model), "free"
+
+    def _openai_client(self) -> Any:
+        return OpenAI(api_key=self.api_key) if self.api_key and OpenAI else None
 
     def _validate_payload(self, task_type: TaskType, payload: dict[str, Any]) -> Any:
         validators = {

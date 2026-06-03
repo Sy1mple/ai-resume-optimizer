@@ -51,6 +51,7 @@ class InterviewInput(BaseModel):
 class GenerateRequest(BaseModel):
     task_type: TaskType
     payload: dict[str, Any]
+    ai_provider: str | None = Field(default=None, pattern="^(free|ollama|openai)$")
     user_id: UUID | None = None
 
 

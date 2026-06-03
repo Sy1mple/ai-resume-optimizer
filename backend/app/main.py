@@ -185,7 +185,11 @@ async def confirm_qr_session(session_id: str) -> str:
 
 @app.post("/api/generate", response_model=GenerateResponse)
 async def generate(request: GenerateRequest) -> GenerateResponse:
-    content, source = await ai_service.generate(request.task_type, request.payload)
+    content, source = await ai_service.generate(
+        request.task_type,
+        request.payload,
+        provider=request.ai_provider,
+    )
     record = await history_store.add(
         task_type=request.task_type,
         content=content,

@@ -135,7 +135,6 @@
 
       <nav class="side-rail" aria-label="Workspace sections">
         <span :class="{ active: activeTask === 'resume_generate' }">{{ t('taskGenerate') }}</span>
-        <span :class="{ active: activeTask === 'resume_optimize' }">{{ t('taskOptimize') }}</span>
         <span :class="{ active: activeTask === 'interview_questions' }">{{ t('taskInterview') }}</span>
         <span>{{ t('export') }}</span>
         <span>{{ t('history') }}</span>
@@ -154,6 +153,7 @@
           </div>
         </div>
         <div class="topbar-actions">
+          <el-segmented v-model="aiMode" :options="aiModeOptions" class="provider-switch" />
           <el-button @click="toggleLanguage">{{ languageToggleLabel }}</el-button>
           <el-tag :type="sourceTagType" effect="light">
             {{ sourceLabel }}
@@ -184,6 +184,13 @@
                   <el-form-item :label="t('targetRole')">
                     <el-input v-model="forms.resume_generate.target_role" :placeholder="t('targetRolePlaceholder')" />
                   </el-form-item>
+                  <el-form-item :label="t('visualStyle')">
+                    <el-select v-model="forms.resume_generate.style">
+                      <el-option :label="t('modern')" value="modern" />
+                      <el-option :label="t('executive')" value="executive" />
+                      <el-option :label="t('compactAts')" value="compact-ats" />
+                    </el-select>
+                  </el-form-item>
                   <el-form-item :label="t('email')">
                     <el-input v-model="forms.resume_generate.email" placeholder="alex@example.com" />
                   </el-form-item>
@@ -200,23 +207,8 @@
                 <el-form-item :label="t('skills')">
                   <el-input v-model="forms.resume_generate.skills" type="textarea" :rows="3" />
                 </el-form-item>
-              </template>
-
-              <template v-if="activeTask === 'resume_optimize'">
-                <div class="grid-2">
-                  <el-form-item :label="t('targetRole')">
-                    <el-input v-model="forms.resume_optimize.target_role" :placeholder="t('optimizeRolePlaceholder')" />
-                  </el-form-item>
-                  <el-form-item :label="t('visualStyle')">
-                    <el-select v-model="forms.resume_optimize.style">
-                      <el-option :label="t('modern')" value="modern" />
-                      <el-option :label="t('executive')" value="executive" />
-                      <el-option :label="t('compactAts')" value="compact-ats" />
-                    </el-select>
-                  </el-form-item>
-                </div>
                 <el-form-item :label="t('resumeContentToBeautify')">
-                  <el-input v-model="forms.resume_optimize.resume_text" type="textarea" :rows="12" />
+                  <el-input v-model="forms.resume_generate.source_resume_text" type="textarea" :rows="5" :placeholder="t('sourceResumePlaceholder')" />
                 </el-form-item>
               </template>
 
@@ -277,7 +269,7 @@
             <div class="preview-header">
               <img v-if="photoDataUrl" :src="photoDataUrl" alt="Candidate portrait" />
               <div>
-                <span>{{ forms.resume_generate.target_role || forms.resume_optimize.target_role || t('targetRole') }}</span>
+                <span>{{ forms.resume_generate.target_role || t('targetRole') }}</span>
                 <strong>{{ candidateName }}</strong>
               </div>
             </div>
@@ -393,11 +385,13 @@ const messages = {
     included: 'Included',
     optional: 'Optional',
     export: 'Export',
-    appSubtitle: 'Build, refine, and export a focused resume workflow',
+    appSubtitle: 'Generate, polish, and export one high-quality resume workflow',
     openaiActive: 'OpenAI active',
     localModelActive: 'Local model active',
     freeLocalMode: 'Free local mode',
     demoMode: 'Free local mode',
+    freeModeShort: 'Free',
+    paidApiShort: 'Paid API',
     logout: 'Log out',
     codeSent: 'Verification code generated',
     loginSuccess: 'Signed in',
@@ -418,7 +412,8 @@ const messages = {
     modern: 'Modern',
     executive: 'Executive',
     compactAts: 'Compact ATS',
-    resumeContentToBeautify: 'Resume content to beautify',
+    resumeContentToBeautify: 'Existing resume draft',
+    sourceResumePlaceholder: 'Optional: paste an existing resume draft here. If provided, Generate will optimize and style it directly.',
     jobTitle: 'Job title',
     jobTitlePlaceholder: 'Product Intern',
     interviewRolePlaceholder: 'Backend Engineer',
@@ -443,12 +438,12 @@ const messages = {
     preview: 'Preview',
     created: 'Created',
     actions: 'Actions',
-    taskGenerate: 'Generate',
+    taskGenerate: 'Generate & Optimize',
     taskOptimize: 'Optimize & Style',
     taskBeautify: 'Beautify',
     taskInterview: 'Interview',
-    resumeGenerator: 'Resume generator',
-    resumeGeneratorSubtitle: 'Create a recruiter-ready resume from structured profile details.',
+    resumeGenerator: 'Resume generator and optimizer',
+    resumeGeneratorSubtitle: 'Create, rewrite, and style a recruiter-ready resume in one place.',
     resumeOptimizer: 'Resume optimizer and stylist',
     resumeOptimizerSubtitle: 'Rewrite, strengthen, and format resume text in one workflow.',
     oneClickBeautifier: 'One-click beautifier',
@@ -506,11 +501,13 @@ const messages = {
     included: '已加入',
     optional: '可选',
     export: '导出',
-    appSubtitle: '聚焦生成、优化并导出高质量简历',
+    appSubtitle: '一站式生成、优化并导出高质量简历',
     openaiActive: 'OpenAI 已启用',
     localModelActive: '本地模型已启用',
     freeLocalMode: '免费本地模式',
     demoMode: '免费本地模式',
+    freeModeShort: '免费',
+    paidApiShort: '付费 API',
     logout: '退出',
     codeSent: '验证码已生成',
     loginSuccess: '登录成功',
@@ -531,7 +528,8 @@ const messages = {
     modern: '现代风',
     executive: '商务风',
     compactAts: '紧凑 ATS',
-    resumeContentToBeautify: '需要美化的简历内容',
+    resumeContentToBeautify: '已有简历草稿',
+    sourceResumePlaceholder: '可选：粘贴已有简历草稿；如果填写，点击生成会直接优化并美化这份内容。',
     jobTitle: '职位名称',
     jobTitlePlaceholder: '产品实习生',
     interviewRolePlaceholder: '后端工程师',
@@ -556,12 +554,12 @@ const messages = {
     preview: '预览',
     created: '创建时间',
     actions: '操作',
-    taskGenerate: '生成',
+    taskGenerate: '生成优化',
     taskOptimize: '优化美化',
     taskBeautify: '美化',
     taskInterview: '面试',
-    resumeGenerator: '简历生成',
-    resumeGeneratorSubtitle: '根据结构化资料生成适合招聘查看的简历。',
+    resumeGenerator: '简历生成优化',
+    resumeGeneratorSubtitle: '在一个入口里完成生成、改写、强化和版式风格整理。',
     resumeOptimizer: '简历优化美化',
     resumeOptimizerSubtitle: '一次完成内容改写、表达强化和版式风格整理。',
     oneClickBeautifier: '一键美化',
@@ -594,12 +592,9 @@ const defaultForms = {
     projects: 'Campus job board: built Vue pages, FastAPI endpoints, and PostgreSQL schema for job posts and applications.',
     skills: 'Vue, JavaScript, Python, FastAPI, SQL, Git',
     target_role: 'Frontend Developer',
-    photo_data_url: ''
-  },
-  resume_optimize: {
-    target_role: 'Frontend Developer',
     style: 'modern',
-    resume_text: 'I made a website for students to find jobs. I used Vue and Python. I worked with classmates and fixed bugs.'
+    source_resume_text: '',
+    photo_data_url: ''
   },
   resume_beautify: {
     target_role: 'Frontend Developer',
@@ -623,6 +618,7 @@ const exporting = ref(false)
 const historyLoading = ref(false)
 const history = ref([])
 const apiSource = ref('free')
+const aiMode = ref(localStorage.getItem('resume_ai_mode') || 'free')
 const photoInput = ref(null)
 const photoDataUrl = ref('')
 const authStorageKey = 'resume_user_v4'
@@ -669,7 +665,7 @@ const resumeScore = computed(() => {
   return Math.min(score, 100)
 })
 const renderedResult = computed(() => markdownToHtml(result.value))
-const activeVisualStyle = computed(() => forms.resume_optimize.style || forms.resume_beautify.style || 'modern')
+const activeVisualStyle = computed(() => forms.resume_generate.style || forms.resume_beautify.style || 'modern')
 const previewStyleClass = computed(() => `resume-style-${activeVisualStyle.value}`)
 const styleLabel = computed(() => {
   const labels = {
@@ -690,8 +686,12 @@ const styleDescriptor = computed(() => {
 
 const taskOptions = computed(() => [
   { label: t('taskGenerate'), value: 'resume_generate' },
-  { label: t('taskOptimize'), value: 'resume_optimize' },
   { label: t('taskInterview'), value: 'interview_questions' }
+])
+
+const aiModeOptions = computed(() => [
+  { label: t('freeModeShort'), value: 'free' },
+  { label: t('paidApiShort'), value: 'openai' }
 ])
 
 const taskMeta = computed(() => ({
@@ -699,11 +699,6 @@ const taskMeta = computed(() => ({
     title: t('resumeGenerator'),
     subtitle: t('resumeGeneratorSubtitle'),
     icon: DocumentChecked
-  },
-  resume_optimize: {
-    title: t('resumeOptimizer'),
-    subtitle: t('resumeOptimizerSubtitle'),
-    icon: MagicStick
   },
   interview_questions: {
     title: t('interviewCoach'),
@@ -826,23 +821,46 @@ function stopQrPolling() {
   }
 }
 
+function buildResumeDraft() {
+  if (forms.resume_generate.source_resume_text.trim()) {
+    return forms.resume_generate.source_resume_text
+  }
+  return [
+    `Name: ${forms.resume_generate.name}`,
+    `Email: ${forms.resume_generate.email}`,
+    `Phone: ${forms.resume_generate.phone}`,
+    `Target role: ${forms.resume_generate.target_role}`,
+    '',
+    `Education:\n${forms.resume_generate.education}`,
+    '',
+    `Projects:\n${forms.resume_generate.projects}`,
+    '',
+    `Skills:\n${forms.resume_generate.skills}`
+  ].join('\n')
+}
+
 async function submit() {
   loading.value = true
   try {
-    const payload = { ...forms[activeTask.value] }
     let requestTask = activeTask.value
     if (activeTask.value === 'resume_generate') {
-      payload.photo_data_url = photoDataUrl.value
-    }
-    if (activeTask.value === 'resume_optimize') {
       requestTask = 'resume_beautify'
-      payload.photo_included = Boolean(photoDataUrl.value)
     }
-    const response = await generateContent(requestTask, payload)
+    const payload = activeTask.value === 'resume_generate'
+      ? {
+          target_role: forms.resume_generate.target_role,
+          style: forms.resume_generate.style,
+          resume_text: buildResumeDraft(),
+          photo_included: Boolean(photoDataUrl.value)
+        }
+      : { ...forms[activeTask.value] }
+    if (activeTask.value === 'interview_questions') {
+      payload.experience_level = payload.experience_level || 'Entry level'
+    }
+    const response = await generateContent(requestTask, payload, aiMode.value)
     result.value = response.content
     apiSource.value = response.source
-    forms.resume_optimize.resume_text = response.content
-    forms.resume_optimize.target_role = forms.resume_generate.target_role || forms.resume_optimize.target_role
+    forms.resume_generate.source_resume_text = response.content
     await loadHistory()
     ElMessage.success(t('generatedSuccessfully'))
   } catch (error) {
@@ -858,9 +876,8 @@ function resetForm() {
 }
 
 function prepareBeautify() {
-  forms.resume_optimize.resume_text = result.value
-  forms.resume_optimize.target_role = forms.resume_generate.target_role || forms.resume_optimize.target_role
-  activeTask.value = 'resume_optimize'
+  forms.resume_generate.source_resume_text = result.value
+  activeTask.value = 'resume_generate'
 }
 
 async function copyResult() {
@@ -926,13 +943,15 @@ async function loadHistory() {
 
 function useHistory(row) {
   result.value = row.content
-  activeTask.value = row.task_type === 'resume_beautify' ? 'resume_optimize' : row.task_type
+  activeTask.value = ['resume_beautify', 'resume_optimize', 'cover_letter'].includes(row.task_type)
+    ? 'resume_generate'
+    : row.task_type
 }
 
 function beautifyHistory(row) {
   result.value = row.content
-  forms.resume_optimize.resume_text = row.content
-  activeTask.value = 'resume_optimize'
+  forms.resume_generate.source_resume_text = row.content
+  activeTask.value = 'resume_generate'
 }
 
 async function removeHistory(id) {
@@ -942,7 +961,7 @@ async function removeHistory(id) {
 }
 
 function formatTaskType(taskType) {
-  if (taskType === 'resume_beautify') return t('taskOptimize')
+  if (['resume_beautify', 'resume_optimize'].includes(taskType)) return t('taskGenerate')
   if (taskType === 'cover_letter') return locale.value === 'zh' ? '旧任务' : 'Legacy task'
   return taskOptions.value.find((item) => item.value === taskType)?.label || taskType
 }
@@ -977,6 +996,10 @@ watch(selectedQrProvider, (provider) => {
   if (qrMode.value) {
     startQrSession(provider)
   }
+})
+
+watch(aiMode, (provider) => {
+  localStorage.setItem('resume_ai_mode', provider)
 })
 
 onMounted(() => {
