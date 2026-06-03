@@ -837,45 +837,85 @@ const messages = {
   }
 }
 
-const defaultForms = {
-  resume_generate: {
-    name: 'Alex Chen',
-    email: 'alex@example.com',
-    phone: '+1 555 0100',
-    education: 'B.S. in Computer Science, 2026. Coursework: data structures, databases, software engineering.',
-    projects: 'Campus job board: built Vue pages, FastAPI endpoints, and PostgreSQL schema for job posts and applications.',
-    project_intro: 'Campus job board for students and employers, covering job browsing, posting, and application workflows.',
-    project_architecture: 'Vue frontend communicates with FastAPI backend through REST APIs. Backend separates job posts, user profiles, and application records into clear modules.',
-    technical_architecture: 'Vue 3, JavaScript, Element Plus, FastAPI, SQL database, REST API, Git workflow.',
-    personal_responsibilities: 'Built resume and job-post pages, implemented API integration, designed core SQL tables, and improved application flow usability.',
-    skills: 'Vue, JavaScript, Python, FastAPI, SQL, Git',
-    target_role: 'Frontend Developer',
-    style: 'modern',
-    source_resume_text: '',
-    photo_data_url: ''
+const initialLocale = localStorage.getItem('resume_locale') || 'zh'
+const defaultFormPresets = {
+  zh: {
+    resume_generate: {
+      name: '陈同学',
+      email: 'chen@example.com',
+      phone: '138 0000 0000',
+      education: '计算机科学与技术本科，2026 届。主修课程：数据结构、数据库、软件工程、Web 开发。',
+      projects: '校园招聘系统：负责 Vue 页面、FastAPI 接口和 SQL 数据表设计。',
+      project_intro: '面向学生和企业的校园招聘系统，支持职位浏览、岗位发布、简历投递和申请进度管理。',
+      project_architecture: '前端使用 Vue 构建页面与状态交互，后端通过 FastAPI 提供 REST API，数据库按用户、职位、投递记录等模块拆分。',
+      technical_architecture: 'Vue 3、JavaScript、Element Plus、FastAPI、SQL 数据库、REST API、Git 协作流程。',
+      personal_responsibilities: '负责简历页面和岗位页面开发、接口联调、核心数据表设计，并优化投递流程的可用性。',
+      skills: 'Vue, JavaScript, Python, FastAPI, SQL, Git',
+      target_role: '前端开发工程师',
+      style: 'modern',
+      source_resume_text: '',
+      photo_data_url: ''
+    },
+    resume_beautify: {
+      target_role: '前端开发工程师',
+      style: 'modern',
+      resume_text: '请先生成或粘贴简历内容，然后进行优化和排版。',
+      photo_included: false
+    },
+    interview_questions: {
+      job_title: '前端开发实习生',
+      technical_direction: 'Vue 3、JavaScript、REST API、浏览器性能优化',
+      experience_level: 'Entry level'
+    },
+    job_match: {
+      target_role: '前端开发工程师',
+      city: '上海',
+      salary_range: '20k-35k / 月',
+      platforms: ['boss', 'lagou', 'liepin'],
+      keywords: 'Vue, JavaScript, FastAPI, AI 简历',
+      resume_text: '具备 Vue、JavaScript、Python、FastAPI、SQL 和 Git 项目经验，曾完成校园招聘系统的职位发布、投递流程和接口联调。'
+    }
   },
-  resume_beautify: {
-    target_role: 'Frontend Developer',
-    style: 'modern',
-    resume_text: 'Paste or generate a resume first, then use this tool to make it cleaner and more polished.',
-    photo_included: false
-  },
-  interview_questions: {
-    job_title: 'Frontend Developer Intern',
-    technical_direction: 'Vue 3, JavaScript, REST APIs, browser performance',
-    experience_level: 'Entry level'
-  },
-  job_match: {
-    target_role: 'Frontend Developer',
-    city: 'Shanghai',
-    salary_range: '20k-35k / month',
-    platforms: ['boss', 'lagou', 'liepin'],
-    keywords: 'Vue, JavaScript, FastAPI, AI resume',
-    resume_text: 'Frontend developer with Vue, JavaScript, Python, FastAPI, SQL and Git experience. Built a campus job board with job posts, application flows, and API integrations.'
+  en: {
+    resume_generate: {
+      name: 'Alex Chen',
+      email: 'alex@example.com',
+      phone: '+1 555 0100',
+      education: 'B.S. in Computer Science, 2026. Coursework: data structures, databases, software engineering, and web development.',
+      projects: 'Campus job board: built Vue pages, FastAPI endpoints, and PostgreSQL schema for job posts and applications.',
+      project_intro: 'Campus job board for students and employers, covering job browsing, posting, resume submission, and application tracking.',
+      project_architecture: 'Vue frontend communicates with FastAPI backend through REST APIs. Backend separates users, job posts, and application records into clear modules.',
+      technical_architecture: 'Vue 3, JavaScript, Element Plus, FastAPI, SQL database, REST API, Git workflow.',
+      personal_responsibilities: 'Built resume and job-post pages, implemented API integration, designed core SQL tables, and improved application flow usability.',
+      skills: 'Vue, JavaScript, Python, FastAPI, SQL, Git',
+      target_role: 'Frontend Developer',
+      style: 'modern',
+      source_resume_text: '',
+      photo_data_url: ''
+    },
+    resume_beautify: {
+      target_role: 'Frontend Developer',
+      style: 'modern',
+      resume_text: 'Paste or generate a resume first, then use this tool to make it cleaner and more polished.',
+      photo_included: false
+    },
+    interview_questions: {
+      job_title: 'Frontend Developer Intern',
+      technical_direction: 'Vue 3, JavaScript, REST APIs, browser performance',
+      experience_level: 'Entry level'
+    },
+    job_match: {
+      target_role: 'Frontend Developer',
+      city: 'Shanghai',
+      salary_range: '20k-35k / month',
+      platforms: ['boss', 'lagou', 'liepin'],
+      keywords: 'Vue, JavaScript, FastAPI, AI resume',
+      resume_text: 'Frontend developer with Vue, JavaScript, Python, FastAPI, SQL and Git experience. Built a campus job board with job posts, application flows, and API integrations.'
+    }
   }
 }
 
-const cloneDefaults = () => JSON.parse(JSON.stringify(defaultForms))
+const cloneDefaults = (lang = initialLocale) => JSON.parse(JSON.stringify(defaultFormPresets[lang] || defaultFormPresets.zh))
 const forms = reactive(cloneDefaults())
 const activeTask = ref('resume_generate')
 const result = ref('')
@@ -889,7 +929,7 @@ const apiDialogVisible = ref(false)
 const photoInput = ref(null)
 const photoDataUrl = ref('')
 const authStorageKey = 'resume_user_v4'
-const locale = ref(localStorage.getItem('resume_locale') || 'zh')
+const locale = ref(initialLocale)
 const currentUser = ref(JSON.parse(localStorage.getItem(authStorageKey) || 'null'))
 const sendingCode = ref(false)
 const loggingIn = ref(false)
@@ -1025,6 +1065,18 @@ function t(key) {
   return messages[locale.value]?.[key] || messages.en[key] || key
 }
 
+function isUsingPreset(lang) {
+  const preset = defaultFormPresets[lang] || defaultFormPresets.zh
+  return Object.keys(preset).every((key) => JSON.stringify(forms[key]) === JSON.stringify(preset[key]))
+}
+
+function applyFormPreset(lang) {
+  const preset = cloneDefaults(lang)
+  Object.keys(preset).forEach((key) => {
+    Object.assign(forms[key], preset[key])
+  })
+}
+
 function platformLabel(platform) {
   return platformOptions.value.find((item) => item.value === platform)?.label || platform
 }
@@ -1078,8 +1130,14 @@ function openSidebarShortcut(target) {
 }
 
 function toggleLanguage() {
-  locale.value = locale.value === 'zh' ? 'en' : 'zh'
+  const previousLocale = locale.value
+  const nextLocale = locale.value === 'zh' ? 'en' : 'zh'
+  const shouldSwapPreset = isUsingPreset(previousLocale)
+  locale.value = nextLocale
   localStorage.setItem('resume_locale', locale.value)
+  if (shouldSwapPreset) {
+    applyFormPreset(nextLocale)
+  }
 }
 
 function saveUser(user) {
@@ -1200,21 +1258,44 @@ function projectDraftContent() {
   return forms.resume_generate.projects
 }
 
+function resumeDraftLabels() {
+  return locale.value === 'zh'
+    ? {
+        name: '姓名',
+        email: '邮箱',
+        phone: '电话',
+        targetRole: '目标岗位',
+        education: '教育经历',
+        projects: '项目经历',
+        skills: '专业技能'
+      }
+    : {
+        name: 'Name',
+        email: 'Email',
+        phone: 'Phone',
+        targetRole: 'Target role',
+        education: 'Education',
+        projects: 'Projects',
+        skills: 'Skills'
+      }
+}
+
 function buildResumeDraft() {
   if (forms.resume_generate.source_resume_text.trim()) {
     return forms.resume_generate.source_resume_text
   }
+  const labels = resumeDraftLabels()
   return [
-    `Name: ${forms.resume_generate.name}`,
-    `Email: ${forms.resume_generate.email}`,
-    `Phone: ${forms.resume_generate.phone}`,
-    `Target role: ${forms.resume_generate.target_role}`,
+    `${labels.name}: ${forms.resume_generate.name}`,
+    `${labels.email}: ${forms.resume_generate.email}`,
+    `${labels.phone}: ${forms.resume_generate.phone}`,
+    `${labels.targetRole}: ${forms.resume_generate.target_role}`,
     '',
-    `Education:\n${forms.resume_generate.education}`,
+    `${labels.education}:\n${forms.resume_generate.education}`,
     '',
-    `Projects:\n${projectDraftContent()}`,
+    `${labels.projects}:\n${projectDraftContent()}`,
     '',
-    `Skills:\n${forms.resume_generate.skills}`
+    `${labels.skills}:\n${forms.resume_generate.skills}`
   ].join('\n')
 }
 
@@ -1264,7 +1345,7 @@ async function submit() {
 }
 
 function resetForm() {
-  Object.assign(forms[activeTask.value], cloneDefaults()[activeTask.value])
+  Object.assign(forms[activeTask.value], cloneDefaults(locale.value)[activeTask.value])
 }
 
 function saveApiKey() {

@@ -139,6 +139,13 @@ class AIService:
                 "- If project_intro, project_architecture, technical_architecture, and personal_responsibilities are available, structure project experience with these four subsections.\n"
                 "- Keep the four subsection titles in the requested output language.\n"
             )
+        if task_type in {TaskType.resume_generate, TaskType.resume_optimize, TaskType.resume_beautify}:
+            style_note += (
+                "\n\nResume output rules:\n"
+                "- Do not include internal UI or template metadata such as visual style, modern, executive, compact ATS, photo mode, scan mode, or output language.\n"
+                "- The final resume must read like a real resume, not a system report or formatting explanation.\n"
+                "- All section titles and visible labels must match output_language.\n"
+            )
         return f"Task: {task_type.value}\n\nInput:\n{fields}{style_note}\n\nReturn Markdown only."
 
     def _ollama_response(self, task_type: TaskType, prompt: str) -> str | None:
@@ -173,6 +180,8 @@ class AIService:
             education_title = "Education" if language == "en" else "教育经历"
             projects_title = "Projects" if language == "en" else "项目经历"
             skills_title = "Skills" if language == "en" else "专业技能"
+            email_label = "Email" if language == "en" else "邮箱"
+            phone_label = "Phone" if language == "en" else "电话"
             summary = (
                 f"Motivated candidate targeting {model.target_role or 'an entry-level role'}, with hands-on project experience, strong learning ability, and a practical skill set."
                 if language == "en"
@@ -182,7 +191,7 @@ class AIService:
                 f"""
                 # {model.name}
 
-                **Email:** {model.email} | **Phone:** {model.phone}
+                **{email_label}:** {model.email} | **{phone_label}:** {model.phone}
 
                 ## {summary_title}
                 {summary}
@@ -228,12 +237,11 @@ class AIService:
             ).strip()
 
         if task_type == TaskType.resume_beautify:
-            target = f" for {model.target_role}" if model.target_role else ""
-            photo_line = "Photo-ready header included." if model.photo_included else "Text-only header."
             style = (model.style or "modern").lower()
             language = self._output_language(model)
             extracted_skills = self._extract_skills_from_resume_text(model.resume_text)
             refined_content = self._remove_skills_from_resume_text(model.resume_text) if extracted_skills else model.resume_text
+            resume_parts = self._extract_resume_parts(model.resume_text)
             skills_section = self._format_skills_section(extracted_skills, language) if extracted_skills else (
                 "- Proficient in the target role's core toolchain, with the ability to complete development, debugging, and delivery independently.\n"
                 "- Experienced with team collaboration workflows and project review practices."
@@ -242,61 +250,66 @@ class AIService:
                 "- 熟悉团队协作流程和项目复盘方法，具备清晰沟通与快速学习能力。"
             )
             skills_title = "Skills" if language == "en" else "专业技能"
-            refined_title = "Refined Resume Content" if language == "en" else "优化后的简历内容"
-            if "executive" in style:
-                style_sections = dedent(
-                    """
-                    ## Leadership Profile
-                    Strategic early-career professional with strong ownership, crisp communication, and a bias for measurable delivery.
-
-                    ## Selected Impact
-                    - Framed project work around decision quality, stakeholder value, and delivery outcomes.
-                    - Elevated language to sound confident, senior, and formal without exaggeration.
-                    """
-                ).strip()
-            elif "compact" in style:
-                style_sections = dedent(
-                    """
-                    ## Summary
-                    Candidate aligned to the target role with practical project experience and ATS-friendly technical keywords.
-
-                    ## Core Keywords
-                    - Frontend development, API integration, debugging, Git workflow, collaboration, delivery.
-                    """
-                ).strip()
+            education_title = "Education" if language == "en" else "教育经历"
+            project_title = "Project Experience" if language == "en" else "项目经历"
+            target_label = "Target role" if language == "en" else "目标岗位"
+            email_label = "Email" if language == "en" else "邮箱"
+            phone_label = "Phone" if language == "en" else "电话"
+            if language == "en":
+                resume_title = resume_parts["name"] or (f"{model.target_role} Resume" if model.target_role else "Resume")
             else:
-                style_sections = dedent(
-                    """
-                    ## Executive Snapshot
-                    Results-oriented candidate with practical project delivery experience, clear communication, and a focused skill set.
-
-                    ## Signature Strengths
-                    - Converts ambiguous requirements into usable product features.
-                    - Communicates technical trade-offs clearly with teammates.
-                    - Learns new tools quickly and applies them in real projects.
-                    """
-                ).strip()
+                resume_title = resume_parts["name"] or (f"{model.target_role}简历" if model.target_role else "简历")
+            contact_items = []
+            if resume_parts["email"]:
+                contact_items.append(f"**{email_label}:** {resume_parts['email']}")
+            if resume_parts["phone"]:
+                contact_items.append(f"**{phone_label}:** {resume_parts['phone']}")
+            if model.target_role:
+                contact_items.append(f"**{target_label}:** {model.target_role}")
+            contact_line = " | ".join(contact_items)
+            education_section = f"## {education_title}\n{resume_parts['education']}\n\n" if resume_parts["education"] else ""
+            project_content = resume_parts["projects"] or refined_content
+            if "executive" in style:
+                style_sections = (
+                    "## Professional Summary\nStrategic candidate with strong ownership, clear communication, and practical project delivery experience.\n\n"
+                    "## Core Strengths\n- Demonstrates structured thinking, reliable execution, and outcome-oriented project delivery.\n"
+                    "- Communicates technical trade-offs clearly and collaborates effectively across roles."
+                    if language == "en"
+                    else "## 职业概述\n具备较强责任心、清晰沟通能力和项目落地经验，能够围绕目标岗位完成稳定交付。\n\n"
+                    "## 核心优势\n- 具备结构化思考、可靠执行和结果导向的项目交付能力。\n"
+                    "- 能够清晰说明技术取舍，并与产品、后端等角色高效协作。"
+                )
+            elif "compact" in style:
+                style_sections = (
+                    "## Professional Summary\nCandidate aligned to the target role with practical project experience, clear technical keywords, and delivery awareness."
+                    if language == "en"
+                    else "## 职业概述\n目标岗位匹配度较高，具备项目实践经验、清晰技术关键词和交付意识。"
+                )
+            else:
+                style_sections = (
+                    "## Professional Summary\nResults-oriented candidate with practical project delivery experience, clear communication, and a focused technical skill set.\n\n"
+                    "## Core Strengths\n- Converts requirements into usable product features and complete delivery outcomes.\n"
+                    "- Learns new tools quickly and applies them in real project scenarios."
+                    if language == "en"
+                    else "## 职业概述\n具备项目交付经验、清晰沟通能力和聚焦的技术能力结构，能够围绕业务需求完成开发任务。\n\n"
+                    "## 核心优势\n- 能够将需求转化为可用的产品功能和完整交付结果。\n"
+                    "- 学习新工具速度快，能够结合真实项目场景落地应用。"
+                )
             return self._clean_markdown(
                 f"""
-                # Polished Resume{target}
+                # {resume_title}
 
-                **Profile Style:** {model.style or "modern"} | **Visual Mode:** {photo_line}
+                {contact_line}
 
                 {style_sections}
 
-                ## Experience And Projects
-                - Redesigned resume bullets to emphasize ownership, scope, tools, and measurable outcomes.
-                - Improved formatting for recruiter scanning, ATS parsing, and interview discussion.
+                {education_section}
 
                 ## {skills_title}
                 {skills_section}
 
-                ## {refined_title}
-                {refined_content}
-
-                ## Final Polish Notes
-                - Add metrics such as users, latency, conversion, accuracy, or time saved.
-                - Keep each project bullet to one action, one method, and one outcome.
+                ## {project_title}
+                {project_content}
                 """
             ).strip()
 
@@ -404,6 +417,35 @@ class AIService:
 
     def _output_language(self, model: Any) -> str:
         return "en" if getattr(model, "output_language", "zh") == "en" else "zh"
+
+    def _extract_resume_parts(self, resume_text: str) -> dict[str, str]:
+        return {
+            "name": self._extract_single_line(resume_text, ["Name", "姓名"]),
+            "email": self._extract_single_line(resume_text, ["Email", "邮箱"]),
+            "phone": self._extract_single_line(resume_text, ["Phone", "电话"]),
+            "education": self._extract_labeled_block(resume_text, ["Education", "教育经历"]),
+            "projects": self._extract_labeled_block(resume_text, ["Projects", "Project Experience", "项目经历"]),
+        }
+
+    def _extract_single_line(self, text: str, labels: list[str]) -> str:
+        label_pattern = "|".join(re.escape(label) for label in labels)
+        match = re.search(rf"(?:^|\n)\s*(?:{label_pattern})\s*[:：]\s*(.+)", text, flags=re.IGNORECASE)
+        return match.group(1).strip() if match else ""
+
+    def _extract_labeled_block(self, text: str, labels: list[str]) -> str:
+        start_pattern = "|".join(re.escape(label) for label in labels)
+        stop_labels = [
+            "Name", "姓名", "Email", "邮箱", "Phone", "电话", "Target role", "目标岗位",
+            "Education", "教育经历", "Projects", "Project Experience", "项目经历",
+            "Skills", "技能", "专业技能", "核心技能"
+        ]
+        stop_pattern = "|".join(re.escape(label) for label in stop_labels)
+        match = re.search(
+            rf"(?:^|\n)\s*(?:{start_pattern})\s*[:：]\s*(.+?)(?=\n\s*(?:{stop_pattern})\s*[:：]|\Z)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        return match.group(1).strip() if match else ""
 
     def _format_project_section(self, model: Any, language: str) -> str:
         structured = [
