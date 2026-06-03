@@ -136,6 +136,7 @@
       <nav class="side-rail" aria-label="Workspace sections">
         <span :class="{ active: activeTask === 'resume_generate' }">{{ t('taskGenerate') }}</span>
         <span :class="{ active: activeTask === 'resume_optimize' }">{{ t('taskOptimize') }}</span>
+        <span :class="{ active: activeTask === 'interview_questions' }">{{ t('taskInterview') }}</span>
         <span>{{ t('export') }}</span>
         <span>{{ t('history') }}</span>
       </nav>
@@ -216,20 +217,6 @@
                 </div>
                 <el-form-item :label="t('resumeContentToBeautify')">
                   <el-input v-model="forms.resume_optimize.resume_text" type="textarea" :rows="12" />
-                </el-form-item>
-              </template>
-
-              <template v-if="activeTask === 'cover_letter'">
-                <div class="grid-2">
-                  <el-form-item :label="t('company')">
-                    <el-input v-model="forms.cover_letter.company_name" :placeholder="t('companyPlaceholder')" />
-                  </el-form-item>
-                  <el-form-item :label="t('jobTitle')">
-                    <el-input v-model="forms.cover_letter.job_title" :placeholder="t('jobTitlePlaceholder')" />
-                  </el-form-item>
-                </div>
-                <el-form-item :label="t('personalExperience')">
-                  <el-input v-model="forms.cover_letter.personal_experience" type="textarea" :rows="10" />
                 </el-form-item>
               </template>
 
@@ -350,7 +337,6 @@ import {
   DocumentChecked,
   Download,
   MagicStick,
-  Message,
   Refresh,
   RefreshLeft,
   StarFilled,
@@ -407,7 +393,7 @@ const messages = {
     included: 'Included',
     optional: 'Optional',
     export: 'Export',
-    appSubtitle: 'Build, polish, and export a complete application kit',
+    appSubtitle: 'Build, refine, and export a focused resume workflow',
     openaiActive: 'OpenAI active',
     localModelActive: 'Local model active',
     freeLocalMode: 'Free local mode',
@@ -433,11 +419,8 @@ const messages = {
     executive: 'Executive',
     compactAts: 'Compact ATS',
     resumeContentToBeautify: 'Resume content to beautify',
-    company: 'Company',
-    companyPlaceholder: 'Example Inc.',
     jobTitle: 'Job title',
     jobTitlePlaceholder: 'Product Intern',
-    personalExperience: 'Personal experience',
     interviewRolePlaceholder: 'Backend Engineer',
     experienceLevel: 'Experience level',
     entryLevel: 'Entry level',
@@ -452,7 +435,7 @@ const messages = {
     wordDocx: 'Word DOCX',
     markdown: 'Markdown',
     plainText: 'Plain text',
-    emptyPreview: 'Generate a resume, cover letter, or interview kit to preview it here.',
+    emptyPreview: 'Generate a resume or interview kit to preview it here.',
     history: 'History',
     recentGenerations: 'Recent generations',
     noHistory: 'No history yet',
@@ -463,7 +446,6 @@ const messages = {
     taskGenerate: 'Generate',
     taskOptimize: 'Optimize & Style',
     taskBeautify: 'Beautify',
-    taskLetter: 'Letter',
     taskInterview: 'Interview',
     resumeGenerator: 'Resume generator',
     resumeGeneratorSubtitle: 'Create a recruiter-ready resume from structured profile details.',
@@ -471,8 +453,6 @@ const messages = {
     resumeOptimizerSubtitle: 'Rewrite, strengthen, and format resume text in one workflow.',
     oneClickBeautifier: 'One-click beautifier',
     oneClickBeautifierSubtitle: 'Turn the current draft into a polished, formatted resume layout.',
-    coverLetter: 'Cover letter',
-    coverLetterSubtitle: 'Generate a tailored letter for a company and role.',
     interviewCoach: 'Interview coach',
     interviewCoachSubtitle: 'Prepare technical and behavioral questions with reference answers.',
     styleModernDescription: 'Editorial spacing, color accents, portfolio-ready rhythm',
@@ -526,7 +506,7 @@ const messages = {
     included: '已加入',
     optional: '可选',
     export: '导出',
-    appSubtitle: '生成、优化并导出完整求职材料',
+    appSubtitle: '聚焦生成、优化并导出高质量简历',
     openaiActive: 'OpenAI 已启用',
     localModelActive: '本地模型已启用',
     freeLocalMode: '免费本地模式',
@@ -552,11 +532,8 @@ const messages = {
     executive: '商务风',
     compactAts: '紧凑 ATS',
     resumeContentToBeautify: '需要美化的简历内容',
-    company: '公司',
-    companyPlaceholder: '示例科技',
     jobTitle: '职位名称',
     jobTitlePlaceholder: '产品实习生',
-    personalExperience: '个人经历',
     interviewRolePlaceholder: '后端工程师',
     experienceLevel: '经验等级',
     entryLevel: '初级',
@@ -571,7 +548,7 @@ const messages = {
     wordDocx: 'Word DOCX',
     markdown: 'Markdown',
     plainText: '纯文本',
-    emptyPreview: '生成简历、求职信或面试题后，会在这里预览。',
+    emptyPreview: '生成简历或面试题后，会在这里预览。',
     history: '历史记录',
     recentGenerations: '最近生成',
     noHistory: '暂无历史记录',
@@ -582,7 +559,6 @@ const messages = {
     taskGenerate: '生成',
     taskOptimize: '优化美化',
     taskBeautify: '美化',
-    taskLetter: '求职信',
     taskInterview: '面试',
     resumeGenerator: '简历生成',
     resumeGeneratorSubtitle: '根据结构化资料生成适合招聘查看的简历。',
@@ -590,8 +566,6 @@ const messages = {
     resumeOptimizerSubtitle: '一次完成内容改写、表达强化和版式风格整理。',
     oneClickBeautifier: '一键美化',
     oneClickBeautifierSubtitle: '把当前草稿整理成更精致的版式和表达。',
-    coverLetter: '求职信',
-    coverLetterSubtitle: '根据公司和岗位生成有针对性的求职信。',
     interviewCoach: '面试助手',
     interviewCoachSubtitle: '生成技术题、行为题和参考回答。',
     styleModernDescription: '留白更舒适，带强调色，适合作品集式展示',
@@ -632,11 +606,6 @@ const defaultForms = {
     style: 'modern',
     resume_text: 'Paste or generate a resume first, then use this tool to make it cleaner and more polished.',
     photo_included: false
-  },
-  cover_letter: {
-    company_name: 'Example Inc.',
-    job_title: 'Frontend Developer Intern',
-    personal_experience: 'I built responsive Vue interfaces, integrated REST APIs, and improved usability based on peer feedback.'
   },
   interview_questions: {
     job_title: 'Frontend Developer Intern',
@@ -722,7 +691,6 @@ const styleDescriptor = computed(() => {
 const taskOptions = computed(() => [
   { label: t('taskGenerate'), value: 'resume_generate' },
   { label: t('taskOptimize'), value: 'resume_optimize' },
-  { label: t('taskLetter'), value: 'cover_letter' },
   { label: t('taskInterview'), value: 'interview_questions' }
 ])
 
@@ -736,11 +704,6 @@ const taskMeta = computed(() => ({
     title: t('resumeOptimizer'),
     subtitle: t('resumeOptimizerSubtitle'),
     icon: MagicStick
-  },
-  cover_letter: {
-    title: t('coverLetter'),
-    subtitle: t('coverLetterSubtitle'),
-    icon: Message
   },
   interview_questions: {
     title: t('interviewCoach'),
@@ -980,6 +943,7 @@ async function removeHistory(id) {
 
 function formatTaskType(taskType) {
   if (taskType === 'resume_beautify') return t('taskOptimize')
+  if (taskType === 'cover_letter') return locale.value === 'zh' ? '旧任务' : 'Legacy task'
   return taskOptions.value.find((item) => item.value === taskType)?.label || taskType
 }
 
