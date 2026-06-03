@@ -144,8 +144,13 @@
     <section class="main-workspace">
       <header class="topbar">
         <div>
-          <p class="eyebrow">AI Resume Optimizer</p>
+          <p class="eyebrow">{{ t('resumeStudio') }}</p>
           <h2>{{ t('appSubtitle') }}</h2>
+          <div class="topbar-pills">
+            <span>{{ sourceLabel }}</span>
+            <span>{{ styleLabel }}</span>
+            <span>{{ resumeScore }}%</span>
+          </div>
         </div>
         <div class="topbar-actions">
           <el-button @click="toggleLanguage">{{ languageToggleLabel }}</el-button>
@@ -160,14 +165,17 @@
         <div>
           <span>{{ t('ats') }}</span>
           <strong>{{ result ? t('ready') : t('draft') }}</strong>
+          <small>{{ resumeScore }}%</small>
         </div>
         <div>
           <span>{{ t('visualStyle') }}</span>
           <strong>{{ styleLabel }}</strong>
+          <small>{{ t('taskBeautify') }}</small>
         </div>
         <div>
           <span>{{ t('export') }}</span>
           <strong>PDF / DOCX / TXT</strong>
+          <small>{{ photoDataUrl ? t('included') : t('optional') }}</small>
         </div>
       </section>
 
