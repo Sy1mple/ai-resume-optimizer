@@ -9,6 +9,7 @@ from openai import OpenAI
 from app.models import (
     CoverLetterInput,
     InterviewInput,
+    ResumeBeautifyInput,
     ResumeGenerateInput,
     ResumeOptimizeInput,
     TaskType,
@@ -23,6 +24,10 @@ PROMPTS: dict[TaskType, str] = {
     TaskType.resume_optimize: (
         "You are a resume editor. Improve the given resume text for clarity, impact, ATS readability, and professional wording. "
         "Return an optimized version plus a short skills suggestion section."
+    ),
+    TaskType.resume_beautify: (
+        "You are a senior resume designer and editor. Transform the resume into a visually organized, high-impact Markdown resume. "
+        "Use clean sections, strong verbs, quantified bullets, and ATS-friendly wording. Keep it honest and concise."
     ),
     TaskType.cover_letter: (
         "You are a career writing assistant. Write a tailored cover letter with a confident, specific, and professional tone."
@@ -58,6 +63,7 @@ class AIService:
         validators = {
             TaskType.resume_generate: ResumeGenerateInput,
             TaskType.resume_optimize: ResumeOptimizeInput,
+            TaskType.resume_beautify: ResumeBeautifyInput,
             TaskType.cover_letter: CoverLetterInput,
             TaskType.interview_questions: InterviewInput,
         }
@@ -65,7 +71,15 @@ class AIService:
 
     def _build_user_prompt(self, task_type: TaskType, model: Any) -> str:
         fields = "\n".join(f"- {key}: {value}" for key, value in model.model_dump().items() if value)
-        return f"Task: {task_type.value}\n\nInput:\n{fields}\n\nReturn Markdown only."
+        style_note = ""
+        if task_type == TaskType.resume_beautify:
+            style_note = (
+                "\n\nStyle rules:\n"
+                "- modern: polished and visually balanced, with a strong summary and grouped strengths.\n"
+                "- executive: formal leadership tone, accomplishment-led bullets, and confident positioning.\n"
+                "- compact-ats: plain ATS-safe structure, dense bullets, minimal decoration, and keyword clarity.\n"
+            )
+        return f"Task: {task_type.value}\n\nInput:\n{fields}{style_note}\n\nReturn Markdown only."
 
     def _mock_response(self, task_type: TaskType, model: Any) -> str:
         if task_type == TaskType.resume_generate:
@@ -108,6 +122,64 @@ class AIService:
 
                 ## Skills Suggestions
                 Add concrete tools, frameworks, metrics, and project scale wherever possible.
+                """
+            ).strip()
+
+        if task_type == TaskType.resume_beautify:
+            target = f" for {model.target_role}" if model.target_role else ""
+            photo_line = "Photo-ready header included." if model.photo_included else "Text-only header."
+            style = (model.style or "modern").lower()
+            if "executive" in style:
+                style_sections = dedent(
+                    """
+                    ## Leadership Profile
+                    Strategic early-career professional with strong ownership, crisp communication, and a bias for measurable delivery.
+
+                    ## Selected Impact
+                    - Framed project work around decision quality, stakeholder value, and delivery outcomes.
+                    - Elevated language to sound confident, senior, and formal without exaggeration.
+                    """
+                ).strip()
+            elif "compact" in style:
+                style_sections = dedent(
+                    """
+                    ## Summary
+                    Candidate aligned to the target role with practical project experience and ATS-friendly technical keywords.
+
+                    ## Core Keywords
+                    - Frontend development, API integration, debugging, Git workflow, collaboration, delivery.
+                    """
+                ).strip()
+            else:
+                style_sections = dedent(
+                    """
+                    ## Executive Snapshot
+                    Results-oriented candidate with practical project delivery experience, clear communication, and a focused skill set.
+
+                    ## Signature Strengths
+                    - Converts ambiguous requirements into usable product features.
+                    - Communicates technical trade-offs clearly with teammates.
+                    - Learns new tools quickly and applies them in real projects.
+                    """
+                ).strip()
+            return dedent(
+                f"""
+                # Polished Resume{target}
+
+                **Profile Style:** {model.style or "modern"} | **Visual Mode:** {photo_line}
+
+                {style_sections}
+
+                ## Experience And Projects
+                - Redesigned resume bullets to emphasize ownership, scope, tools, and measurable outcomes.
+                - Improved formatting for recruiter scanning, ATS parsing, and interview discussion.
+
+                ## Refined Resume Content
+                {model.resume_text}
+
+                ## Final Polish Notes
+                - Add metrics such as users, latency, conversion, accuracy, or time saved.
+                - Keep each project bullet to one action, one method, and one outcome.
                 """
             ).strip()
 

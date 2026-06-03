@@ -22,3 +22,40 @@ export async function deleteHistoryRecord(id) {
   const { data } = await api.delete(`/api/history/${id}`)
   return data
 }
+
+export async function exportDocument(payload) {
+  const response = await api.post('/api/export', payload, {
+    responseType: 'blob'
+  })
+  const disposition = response.headers['content-disposition'] || ''
+  const match = disposition.match(/filename="(.+)"/)
+  return {
+    blob: response.data,
+    filename: match?.[1] || `resume.${payload.format}`
+  }
+}
+
+export async function requestEmailCode(email) {
+  const { data } = await api.post('/api/auth/email-code', { email })
+  return data
+}
+
+export async function verifyEmailCode(email, code) {
+  const { data } = await api.post('/api/auth/verify-code', { email, code })
+  return data
+}
+
+export async function qrLogin(provider) {
+  const { data } = await api.post('/api/auth/qr-login', { provider })
+  return data
+}
+
+export async function createQrSession(provider) {
+  const { data } = await api.post('/api/auth/qr-session', { provider })
+  return data
+}
+
+export async function getQrSession(sessionId) {
+  const { data } = await api.get(`/api/auth/qr-session/${sessionId}`)
+  return data
+}
