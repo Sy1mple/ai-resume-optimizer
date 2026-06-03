@@ -52,6 +52,7 @@ class GenerateRequest(BaseModel):
     task_type: TaskType
     payload: dict[str, Any]
     ai_provider: str | None = Field(default=None, pattern="^(free|ollama|openai)$")
+    openai_api_key: str | None = Field(default=None, max_length=300)
     user_id: UUID | None = None
 
 

@@ -147,20 +147,36 @@
           <p class="eyebrow">{{ t('resumeStudio') }}</p>
           <h2>{{ t('appSubtitle') }}</h2>
           <div class="topbar-pills">
-            <span>{{ sourceLabel }}</span>
             <span>{{ styleLabel }}</span>
             <span>{{ resumeScore }}%</span>
           </div>
         </div>
         <div class="topbar-actions">
-          <el-segmented v-model="aiMode" :options="aiModeOptions" class="provider-switch" />
+          <el-button class="api-key-button" @click="apiDialogVisible = true">
+            {{ openaiApiKey ? t('apiKeyConfigured') : t('paidApiShort') }}
+          </el-button>
           <el-button @click="toggleLanguage">{{ languageToggleLabel }}</el-button>
-          <el-tag :type="sourceTagType" effect="light">
-            {{ sourceLabel }}
-          </el-tag>
           <el-button text @click="logout">{{ t('logout') }}</el-button>
         </div>
       </header>
+
+      <el-dialog v-model="apiDialogVisible" :title="t('apiKeyTitle')" width="420px" class="api-key-dialog">
+        <el-form label-position="top">
+          <el-form-item :label="t('apiKeyLabel')">
+            <el-input
+              v-model="apiKeyDraft"
+              type="password"
+              show-password
+              :placeholder="t('apiKeyPlaceholder')"
+            />
+          </el-form-item>
+        </el-form>
+        <p class="api-key-note">{{ t('apiKeyHelp') }}</p>
+        <template #footer>
+          <el-button @click="clearApiKey">{{ t('clearApiKey') }}</el-button>
+          <el-button type="primary" @click="saveApiKey">{{ t('saveApiKey') }}</el-button>
+        </template>
+      </el-dialog>
 
       <div class="workspace-grid">
         <section class="task-panel">
@@ -386,12 +402,16 @@ const messages = {
     optional: 'Optional',
     export: 'Export',
     appSubtitle: 'Generate, polish, and export one high-quality resume workflow',
-    openaiActive: 'OpenAI active',
-    localModelActive: 'Local model active',
-    freeLocalMode: 'Free local mode',
-    demoMode: 'Free local mode',
-    freeModeShort: 'Free',
     paidApiShort: 'Paid API',
+    apiKeyConfigured: 'API configured',
+    apiKeyTitle: 'Use paid OpenAI API',
+    apiKeyLabel: 'OpenAI API key',
+    apiKeyPlaceholder: 'sk-...',
+    apiKeyHelp: 'The key is kept in this browser session and sent only when generating content with paid API enabled.',
+    saveApiKey: 'Save key',
+    clearApiKey: 'Clear key',
+    apiKeySaved: 'API key saved',
+    apiKeyCleared: 'API key cleared',
     logout: 'Log out',
     codeSent: 'Verification code generated',
     loginSuccess: 'Signed in',
@@ -502,12 +522,16 @@ const messages = {
     optional: '可选',
     export: '导出',
     appSubtitle: '一站式生成、优化并导出高质量简历',
-    openaiActive: 'OpenAI 已启用',
-    localModelActive: '本地模型已启用',
-    freeLocalMode: '免费本地模式',
-    demoMode: '免费本地模式',
-    freeModeShort: '免费',
     paidApiShort: '付费 API',
+    apiKeyConfigured: 'API 已配置',
+    apiKeyTitle: '使用付费 OpenAI API',
+    apiKeyLabel: 'OpenAI API Key',
+    apiKeyPlaceholder: 'sk-...',
+    apiKeyHelp: 'Key 只保存在当前浏览器会话中，只有生成内容时才会发送到本地后端调用付费 API。',
+    saveApiKey: '保存 Key',
+    clearApiKey: '清除 Key',
+    apiKeySaved: 'API Key 已保存',
+    apiKeyCleared: 'API Key 已清除',
     logout: '退出',
     codeSent: '验证码已生成',
     loginSuccess: '登录成功',
@@ -617,8 +641,9 @@ const loading = ref(false)
 const exporting = ref(false)
 const historyLoading = ref(false)
 const history = ref([])
-const apiSource = ref('free')
-const aiMode = ref(localStorage.getItem('resume_ai_mode') || 'free')
+const openaiApiKey = ref(sessionStorage.getItem('resume_openai_api_key') || '')
+const apiKeyDraft = ref(openaiApiKey.value)
+const apiDialogVisible = ref(false)
 const photoInput = ref(null)
 const photoDataUrl = ref('')
 const authStorageKey = 'resume_user_v4'
@@ -640,20 +665,6 @@ let qrPollTimer = null
 
 const candidateName = computed(() => forms.resume_generate.name || 'Candidate')
 const languageToggleLabel = computed(() => (locale.value === 'zh' ? 'English' : '中文'))
-const sourceTagType = computed(() => {
-  if (apiSource.value === 'openai') return 'success'
-  if (apiSource.value === 'ollama') return 'warning'
-  return 'info'
-})
-const sourceLabel = computed(() => {
-  const labels = {
-    openai: t('openaiActive'),
-    ollama: t('localModelActive'),
-    free: t('freeLocalMode'),
-    mock: t('freeLocalMode')
-  }
-  return labels[apiSource.value] || t('freeLocalMode')
-})
 const resumeScore = computed(() => {
   let score = 28
   if (forms.resume_generate.name) score += 8
@@ -687,11 +698,6 @@ const styleDescriptor = computed(() => {
 const taskOptions = computed(() => [
   { label: t('taskGenerate'), value: 'resume_generate' },
   { label: t('taskInterview'), value: 'interview_questions' }
-])
-
-const aiModeOptions = computed(() => [
-  { label: t('freeModeShort'), value: 'free' },
-  { label: t('paidApiShort'), value: 'openai' }
 ])
 
 const taskMeta = computed(() => ({
@@ -857,9 +863,9 @@ async function submit() {
     if (activeTask.value === 'interview_questions') {
       payload.experience_level = payload.experience_level || 'Entry level'
     }
-    const response = await generateContent(requestTask, payload, aiMode.value)
+    const provider = openaiApiKey.value ? 'openai' : 'free'
+    const response = await generateContent(requestTask, payload, provider, openaiApiKey.value)
     result.value = response.content
-    apiSource.value = response.source
     forms.resume_generate.source_resume_text = response.content
     await loadHistory()
     ElMessage.success(t('generatedSuccessfully'))
@@ -873,6 +879,23 @@ async function submit() {
 
 function resetForm() {
   Object.assign(forms[activeTask.value], cloneDefaults()[activeTask.value])
+}
+
+function saveApiKey() {
+  openaiApiKey.value = apiKeyDraft.value.trim()
+  if (openaiApiKey.value) {
+    sessionStorage.setItem('resume_openai_api_key', openaiApiKey.value)
+    ElMessage.success(t('apiKeySaved'))
+  }
+  apiDialogVisible.value = false
+}
+
+function clearApiKey() {
+  openaiApiKey.value = ''
+  apiKeyDraft.value = ''
+  sessionStorage.removeItem('resume_openai_api_key')
+  apiDialogVisible.value = false
+  ElMessage.success(t('apiKeyCleared'))
 }
 
 function prepareBeautify() {
@@ -996,10 +1019,6 @@ watch(selectedQrProvider, (provider) => {
   if (qrMode.value) {
     startQrSession(provider)
   }
-})
-
-watch(aiMode, (provider) => {
-  localStorage.setItem('resume_ai_mode', provider)
 })
 
 onMounted(() => {

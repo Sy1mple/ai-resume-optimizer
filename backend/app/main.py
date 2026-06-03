@@ -189,6 +189,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         request.task_type,
         request.payload,
         provider=request.ai_provider,
+        openai_api_key=request.openai_api_key,
     )
     record = await history_store.add(
         task_type=request.task_type,

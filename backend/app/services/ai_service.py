@@ -58,6 +58,7 @@ class AIService:
         task_type: TaskType,
         payload: dict[str, Any],
         provider: str | None = None,
+        openai_api_key: str | None = None,
     ) -> tuple[str, str]:
         model = self._validate_payload(task_type, payload)
         prompt = self._build_user_prompt(task_type, model)
@@ -70,7 +71,7 @@ class AIService:
             return self._mock_response(task_type, model), "free"
 
         if active_provider == "openai":
-            client = self.client or self._openai_client()
+            client = self._openai_client(openai_api_key) if openai_api_key else self.client or self._openai_client()
             if not client:
                 return self._mock_response(task_type, model), "free"
             response = client.responses.create(
@@ -83,8 +84,9 @@ class AIService:
 
         return self._mock_response(task_type, model), "free"
 
-    def _openai_client(self) -> Any:
-        return OpenAI(api_key=self.api_key) if self.api_key and OpenAI else None
+    def _openai_client(self, api_key: str | None = None) -> Any:
+        active_key = (api_key or self.api_key).strip()
+        return OpenAI(api_key=active_key) if active_key and OpenAI else None
 
     def _validate_payload(self, task_type: TaskType, payload: dict[str, Any]) -> Any:
         validators = {
