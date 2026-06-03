@@ -20,20 +20,27 @@ class ResumeGenerateInput(BaseModel):
     phone: str = Field(..., max_length=40)
     education: str = Field(..., max_length=3000)
     projects: str = Field(..., max_length=5000)
+    project_intro: str | None = Field(default=None, max_length=3000)
+    project_architecture: str | None = Field(default=None, max_length=3000)
+    technical_architecture: str | None = Field(default=None, max_length=3000)
+    personal_responsibilities: str | None = Field(default=None, max_length=3000)
     skills: str = Field(..., max_length=2000)
     target_role: str | None = Field(default=None, max_length=120)
+    output_language: str | None = Field(default="zh", pattern="^(zh|en)$")
     photo_data_url: str | None = Field(default=None, max_length=1_500_000)
 
 
 class ResumeOptimizeInput(BaseModel):
     resume_text: str = Field(..., min_length=20, max_length=12000)
     target_role: str | None = Field(default=None, max_length=120)
+    output_language: str | None = Field(default="zh", pattern="^(zh|en)$")
 
 
 class ResumeBeautifyInput(BaseModel):
     resume_text: str = Field(..., min_length=20, max_length=16000)
     target_role: str | None = Field(default=None, max_length=120)
     style: str | None = Field(default="modern", max_length=80)
+    output_language: str | None = Field(default="zh", pattern="^(zh|en)$")
     photo_included: bool = False
 
 

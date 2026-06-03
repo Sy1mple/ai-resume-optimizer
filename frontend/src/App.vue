@@ -268,8 +268,17 @@
                 <el-form-item :label="t('education')">
                   <el-input v-model="forms.resume_generate.education" type="textarea" :rows="3" />
                 </el-form-item>
-                <el-form-item :label="t('projects')">
-                  <el-input v-model="forms.resume_generate.projects" type="textarea" :rows="5" />
+                <el-form-item :label="t('projectIntro')">
+                  <el-input v-model="forms.resume_generate.project_intro" type="textarea" :rows="3" :placeholder="t('projectIntroPlaceholder')" />
+                </el-form-item>
+                <el-form-item :label="t('projectArchitecture')">
+                  <el-input v-model="forms.resume_generate.project_architecture" type="textarea" :rows="3" :placeholder="t('projectArchitecturePlaceholder')" />
+                </el-form-item>
+                <el-form-item :label="t('technicalArchitecture')">
+                  <el-input v-model="forms.resume_generate.technical_architecture" type="textarea" :rows="3" :placeholder="t('technicalArchitecturePlaceholder')" />
+                </el-form-item>
+                <el-form-item :label="t('personalResponsibilities')">
+                  <el-input v-model="forms.resume_generate.personal_responsibilities" type="textarea" :rows="4" :placeholder="t('personalResponsibilitiesPlaceholder')" />
                 </el-form-item>
                 <el-form-item :label="t('skills')">
                   <el-input v-model="forms.resume_generate.skills" type="textarea" :rows="3" />
@@ -567,6 +576,14 @@ const messages = {
     phone: 'Phone',
     education: 'Education',
     projects: 'Projects',
+    projectIntro: 'Project introduction',
+    projectIntroPlaceholder: 'What the project does, users served, business scenario, and core value.',
+    projectArchitecture: 'Project architecture',
+    projectArchitecturePlaceholder: 'Frontend, backend, data flow, modules, services, and integration relationships.',
+    technicalArchitecture: 'Technical architecture',
+    technicalArchitecturePlaceholder: 'Frameworks, libraries, database, API design, deployment, and engineering choices.',
+    personalResponsibilities: 'Personal responsibilities',
+    personalResponsibilitiesPlaceholder: 'Your ownership, delivered modules, collaboration, optimization, and measurable outcomes.',
     skills: 'Skills',
     resumeText: 'Resume text',
     visualStyle: 'Visual style',
@@ -720,6 +737,14 @@ const messages = {
     phone: '电话',
     education: '教育经历',
     projects: '项目经历',
+    projectIntro: '项目介绍',
+    projectIntroPlaceholder: '说明项目背景、服务对象、业务场景和核心价值。',
+    projectArchitecture: '项目架构',
+    projectArchitecturePlaceholder: '说明前端、后端、数据流、模块划分、服务关系和集成方式。',
+    technicalArchitecture: '技术架构',
+    technicalArchitecturePlaceholder: '说明框架、组件库、数据库、接口设计、部署方式和工程化选择。',
+    personalResponsibilities: '个人职责',
+    personalResponsibilitiesPlaceholder: '说明你负责的模块、交付内容、协作方式、优化结果和量化成果。',
     skills: '技能',
     resumeText: '简历文本',
     visualStyle: '视觉风格',
@@ -819,6 +844,10 @@ const defaultForms = {
     phone: '+1 555 0100',
     education: 'B.S. in Computer Science, 2026. Coursework: data structures, databases, software engineering.',
     projects: 'Campus job board: built Vue pages, FastAPI endpoints, and PostgreSQL schema for job posts and applications.',
+    project_intro: 'Campus job board for students and employers, covering job browsing, posting, and application workflows.',
+    project_architecture: 'Vue frontend communicates with FastAPI backend through REST APIs. Backend separates job posts, user profiles, and application records into clear modules.',
+    technical_architecture: 'Vue 3, JavaScript, Element Plus, FastAPI, SQL database, REST API, Git workflow.',
+    personal_responsibilities: 'Built resume and job-post pages, implemented API integration, designed core SQL tables, and improved application flow usability.',
     skills: 'Vue, JavaScript, Python, FastAPI, SQL, Git',
     target_role: 'Frontend Developer',
     style: 'modern',
@@ -887,7 +916,7 @@ const resumeScore = computed(() => {
   let score = 28
   if (forms.resume_generate.name) score += 8
   if (forms.resume_generate.email) score += 8
-  if (forms.resume_generate.projects.length > 40) score += 18
+  if (projectDraftContent().length > 40) score += 18
   if (forms.resume_generate.skills.length > 20) score += 14
   if (photoDataUrl.value) score += 7
   if (result.value) score += 17
@@ -1158,6 +1187,19 @@ function stopQrPolling() {
   }
 }
 
+function projectDraftContent() {
+  const sections = [
+    [locale.value === 'zh' ? '项目介绍' : 'Project introduction', forms.resume_generate.project_intro],
+    [locale.value === 'zh' ? '项目架构' : 'Project architecture', forms.resume_generate.project_architecture],
+    [locale.value === 'zh' ? '技术架构' : 'Technical architecture', forms.resume_generate.technical_architecture],
+    [locale.value === 'zh' ? '个人职责' : 'Personal responsibilities', forms.resume_generate.personal_responsibilities]
+  ].filter(([, value]) => value?.trim())
+  if (sections.length) {
+    return sections.map(([title, value]) => `${title}:\n${value}`).join('\n\n')
+  }
+  return forms.resume_generate.projects
+}
+
 function buildResumeDraft() {
   if (forms.resume_generate.source_resume_text.trim()) {
     return forms.resume_generate.source_resume_text
@@ -1170,7 +1212,7 @@ function buildResumeDraft() {
     '',
     `Education:\n${forms.resume_generate.education}`,
     '',
-    `Projects:\n${forms.resume_generate.projects}`,
+    `Projects:\n${projectDraftContent()}`,
     '',
     `Skills:\n${forms.resume_generate.skills}`
   ].join('\n')
@@ -1195,6 +1237,7 @@ async function submit() {
           target_role: forms.resume_generate.target_role,
           style: forms.resume_generate.style,
           resume_text: buildResumeDraft(),
+          output_language: locale.value,
           photo_included: Boolean(photoDataUrl.value)
         }
       : activeTask.value === 'job_match'

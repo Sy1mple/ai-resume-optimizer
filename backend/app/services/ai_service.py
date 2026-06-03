@@ -28,17 +28,20 @@ PROMPTS: dict[TaskType, str] = {
         "You are a senior career coach. Create a polished professional resume in Markdown. "
         "Use concise bullet points, quantify impact when possible, and keep the tone suitable for early-career candidates. "
         "When skills are provided as keywords, rewrite them into a formal resume Skills section. "
-        "For Chinese resumes, use phrases like 熟练掌握, 熟悉, 了解, and 具备; never return a raw comma-separated keyword list."
+        "Respect the requested output language. Sort skills from more important/difficult to easier/supporting skills. "
+        "Group related skills together, and write one skill per bullet line."
     ),
     TaskType.resume_optimize: (
         "You are a resume editor. Improve the given resume text for clarity, impact, ATS readability, and professional wording. "
         "Return an optimized version plus a short skills suggestion section. "
-        "Convert skill keywords into standard resume wording such as 熟练掌握..., 熟悉..., 具备..., instead of leaving bare keywords."
+        "Respect the requested output language. Convert skill keywords into standard resume wording instead of leaving bare keywords. "
+        "Sort skills by importance and difficulty, group related skills, and write one skill per bullet line."
     ),
     TaskType.resume_beautify: (
         "You are a senior resume designer and editor. Transform the resume into a visually organized, high-impact Markdown resume. "
         "Use clean sections, strong verbs, quantified bullets, and ATS-friendly wording. Keep it honest and concise. "
-        "If the resume contains a Skills keyword list, rewrite it as polished skill bullets using 熟练掌握, 熟悉, 了解, and 具备 where suitable."
+        "If the resume contains a Skills keyword list, rewrite it as polished skill bullets in the requested output language. "
+        "Sort skills by importance and difficulty, group related skills, and write one skill per bullet line."
     ),
     TaskType.cover_letter: (
         "You are a career writing assistant. Write a tailored cover letter with a confident, specific, and professional tone."
@@ -123,9 +126,18 @@ class AIService:
             style_note += (
                 "\n\nSkill section rules:\n"
                 "- Do not output skills as a bare keyword list.\n"
+                "- Respect output_language exactly: zh uses Chinese wording; en uses English wording.\n"
                 "- Convert keyword input into standard resume skill bullets.\n"
-                "- For Chinese output, use wording like 熟练掌握 X，熟悉 Y，了解 Z，具备 W 项目协作能力。\n"
-                "- Group related tools naturally and keep each bullet specific, concise, and recruiter-friendly.\n"
+                "- Sort skills from more important/difficult to easier/supporting skills.\n"
+                "- Group related skills together, but write each individual skill as its own bullet line.\n"
+                "- For zh, use wording like 熟练掌握 X, 熟悉 Y, 了解 Z, 具备 W 能力.\n"
+                "- For en, use wording like Proficient in X, Experienced with Y, Familiar with Z, Strong W capability.\n"
+            )
+        if task_type in {TaskType.resume_generate, TaskType.resume_beautify}:
+            style_note += (
+                "\n\nProject section rules:\n"
+                "- If project_intro, project_architecture, technical_architecture, and personal_responsibilities are available, structure project experience with these four subsections.\n"
+                "- Keep the four subsection titles in the requested output language.\n"
             )
         return f"Task: {task_type.value}\n\nInput:\n{fields}{style_note}\n\nReturn Markdown only."
 
@@ -154,36 +166,48 @@ class AIService:
 
     def _mock_response(self, task_type: TaskType, model: Any) -> str:
         if task_type == TaskType.resume_generate:
-            skills_section = self._format_skills_section(model.skills)
+            language = self._output_language(model)
+            skills_section = self._format_skills_section(model.skills, language)
+            projects_section = self._format_project_section(model, language)
+            summary_title = "Professional Summary" if language == "en" else "职业概述"
+            education_title = "Education" if language == "en" else "教育经历"
+            projects_title = "Projects" if language == "en" else "项目经历"
+            skills_title = "Skills" if language == "en" else "专业技能"
+            summary = (
+                f"Motivated candidate targeting {model.target_role or 'an entry-level role'}, with hands-on project experience, strong learning ability, and a practical skill set."
+                if language == "en"
+                else f"目标岗位为{model.target_role or '相关岗位'}，具备项目实践经验、较强学习能力和清晰的技术能力结构。"
+            )
             return self._clean_markdown(
                 f"""
                 # {model.name}
 
                 **Email:** {model.email} | **Phone:** {model.phone}
 
-                ## Professional Summary
-                Motivated candidate targeting {model.target_role or "an entry-level role"}, with hands-on project experience, strong learning ability, and a practical skill set.
+                ## {summary_title}
+                {summary}
 
-                ## Education
+                ## {education_title}
                 {model.education}
 
-                ## Projects
-                - Reframed project experience around business value, technical ownership, and measurable outcomes.
-                - Highlighted collaboration, problem solving, and delivery quality.
+                ## {projects_title}
+                {projects_section}
 
-                {model.projects}
-
-                ## Skills
+                ## {skills_title}
                 {skills_section}
                 """
             ).strip()
 
         if task_type == TaskType.resume_optimize:
             target = f" for {model.target_role}" if model.target_role else ""
+            language = self._output_language(model)
             extracted_skills = self._extract_skills_from_resume_text(model.resume_text)
             revised_content = self._remove_skills_from_resume_text(model.resume_text) if extracted_skills else model.resume_text
-            skills_section = self._format_skills_section(extracted_skills) if extracted_skills else (
-                "- 熟练掌握目标岗位所需的核心工具与方法，能够结合项目场景完成实际交付。\n"
+            skills_section = self._format_skills_section(extracted_skills, language) if extracted_skills else (
+                "- Proficient in role-relevant core tools, with the ability to apply them in project delivery.\n"
+                "- Experienced with requirement breakdown, issue diagnosis, and result review."
+                if language == "en"
+                else "- 熟练掌握目标岗位所需的核心工具与方法，能够结合项目场景完成实际交付。\n"
                 "- 熟悉业务需求拆解、问题定位和结果复盘，具备持续优化简历表达的能力。"
             )
             return self._clean_markdown(
@@ -207,12 +231,18 @@ class AIService:
             target = f" for {model.target_role}" if model.target_role else ""
             photo_line = "Photo-ready header included." if model.photo_included else "Text-only header."
             style = (model.style or "modern").lower()
+            language = self._output_language(model)
             extracted_skills = self._extract_skills_from_resume_text(model.resume_text)
             refined_content = self._remove_skills_from_resume_text(model.resume_text) if extracted_skills else model.resume_text
-            skills_section = self._format_skills_section(extracted_skills) if extracted_skills else (
-                "- 熟练掌握目标岗位相关工具链，能够独立完成基础功能开发、调试和交付。\n"
+            skills_section = self._format_skills_section(extracted_skills, language) if extracted_skills else (
+                "- Proficient in the target role's core toolchain, with the ability to complete development, debugging, and delivery independently.\n"
+                "- Experienced with team collaboration workflows and project review practices."
+                if language == "en"
+                else "- 熟练掌握目标岗位相关工具链，能够独立完成基础功能开发、调试和交付。\n"
                 "- 熟悉团队协作流程和项目复盘方法，具备清晰沟通与快速学习能力。"
             )
+            skills_title = "Skills" if language == "en" else "专业技能"
+            refined_title = "Refined Resume Content" if language == "en" else "优化后的简历内容"
             if "executive" in style:
                 style_sections = dedent(
                     """
@@ -258,10 +288,10 @@ class AIService:
                 - Redesigned resume bullets to emphasize ownership, scope, tools, and measurable outcomes.
                 - Improved formatting for recruiter scanning, ATS parsing, and interview discussion.
 
-                ## Skills
+                ## {skills_title}
                 {skills_section}
 
-                ## Refined Resume Content
+                ## {refined_title}
                 {refined_content}
 
                 ## Final Polish Notes
@@ -372,22 +402,55 @@ class AIService:
             cleaned = re.sub(pattern, "\n", cleaned, flags=re.IGNORECASE | re.DOTALL)
         return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
-    def _format_skills_section(self, raw_skills: str) -> str:
-        skills = self._split_skill_keywords(raw_skills)
-        if not skills:
-            return "- 熟练掌握岗位相关核心技能，能够结合项目需求完成落地交付。"
+    def _output_language(self, model: Any) -> str:
+        return "en" if getattr(model, "output_language", "zh") == "en" else "zh"
 
-        primary = "、".join(skills[:3])
-        secondary = "、".join(skills[3:6])
-        extra = "、".join(skills[6:10])
-        bullets = [
-            f"- 熟练掌握 {primary}，能够在实际项目中完成需求开发、问题定位和功能交付。"
+    def _format_project_section(self, model: Any, language: str) -> str:
+        structured = [
+            ("Project introduction", "项目介绍", getattr(model, "project_intro", None)),
+            ("Project architecture", "项目架构", getattr(model, "project_architecture", None)),
+            ("Technical architecture", "技术架构", getattr(model, "technical_architecture", None)),
+            ("Personal responsibilities", "个人职责", getattr(model, "personal_responsibilities", None)),
         ]
-        if secondary:
-            bullets.append(f"- 熟悉 {secondary}，理解常见工程流程、接口协作和数据处理场景。")
-        if extra:
-            bullets.append(f"- 了解 {extra} 等相关工具或技术，能够根据项目需要快速学习并应用。")
-        bullets.append("- 具备良好的 Git 协作、调试排查、文档整理和跨角色沟通能力。")
+        if any(value for _, _, value in structured):
+            lines: list[str] = []
+            for en_title, zh_title, value in structured:
+                if value:
+                    title = en_title if language == "en" else zh_title
+                    lines.append(f"### {title}\n{value}")
+            return "\n\n".join(lines)
+        return getattr(model, "projects", "")
+
+    def _format_skills_section(self, raw_skills: str, language: str = "zh") -> str:
+        skills = self._sort_skill_keywords(self._split_skill_keywords(raw_skills))
+        if not skills:
+            return (
+                "- Proficient in role-relevant core skills, with the ability to apply them in project delivery."
+                if language == "en"
+                else "- 熟练掌握岗位相关核心技能，能够结合项目需求完成落地交付。"
+            )
+
+        bullets: list[str] = []
+        for skill in skills:
+            category = self._skill_category(skill)
+            if language == "en":
+                if category in {"language", "frontend"}:
+                    bullets.append(f"- Proficient in {skill}, with practical experience applying it to feature development and delivery.")
+                elif category in {"backend", "database"}:
+                    bullets.append(f"- Experienced with {skill}, including API integration, data interaction, or backend collaboration scenarios.")
+                elif category in {"devops", "tool"}:
+                    bullets.append(f"- Familiar with {skill}, and able to use it effectively in development, debugging, and team workflows.")
+                else:
+                    bullets.append(f"- Strong {skill} capability, with solid learning, collaboration, and delivery awareness.")
+            else:
+                if category in {"language", "frontend"}:
+                    bullets.append(f"- 熟练掌握 {skill}，能够结合业务需求完成页面开发、功能实现和交付优化。")
+                elif category in {"backend", "database"}:
+                    bullets.append(f"- 熟悉 {skill}，理解接口协作、数据处理和后端联调等常见项目场景。")
+                elif category in {"devops", "tool"}:
+                    bullets.append(f"- 了解 {skill}，能够在开发调试、版本管理和团队协作流程中高效使用。")
+                else:
+                    bullets.append(f"- 具备 {skill} 相关能力，能够根据项目需要快速学习并落地应用。")
         return "\n".join(bullets)
 
     def _split_skill_keywords(self, raw_skills: str) -> list[str]:
@@ -403,3 +466,61 @@ class AIService:
             if skill.lower() not in {item.lower() for item in skills}:
                 skills.append(skill)
         return skills[:12]
+
+    def _sort_skill_keywords(self, skills: list[str]) -> list[str]:
+        return sorted(skills, key=lambda skill: (self._category_rank(self._skill_category(skill)), self._skill_rank(skill), skill.lower()))
+
+    def _skill_category(self, skill: str) -> str:
+        key = self._skill_key(skill)
+        categories = {
+            "language": {"javascript", "typescript", "python", "java", "go", "golang", "c++", "c#", "php", "swift", "kotlin"},
+            "frontend": {"vue", "vue.js", "vue3", "react", "react.js", "angular", "html", "css", "sass", "less", "tailwind", "element plus", "element-plus", "vite", "webpack"},
+            "backend": {"fastapi", "django", "flask", "node", "node.js", "express", "spring", "spring boot", "rest api", "restful api", "graphql"},
+            "database": {"sql", "mysql", "postgresql", "postgres", "mongodb", "redis", "sqlite", "elasticsearch"},
+            "devops": {"docker", "kubernetes", "k8s", "linux", "nginx", "ci/cd", "github actions", "jenkins"},
+            "tool": {"git", "github", "gitlab", "figma", "postman", "jira", "notion", "excel"},
+        }
+        for category, values in categories.items():
+            if key in values:
+                return category
+        return "other"
+
+    def _category_rank(self, category: str) -> int:
+        ranks = {
+            "language": 0,
+            "frontend": 1,
+            "backend": 2,
+            "database": 3,
+            "devops": 4,
+            "tool": 5,
+            "other": 6,
+        }
+        return ranks.get(category, 9)
+
+    def _skill_rank(self, skill: str) -> int:
+        key = self._skill_key(skill)
+        ranks = {
+            "javascript": 0,
+            "typescript": 1,
+            "python": 2,
+            "java": 3,
+            "vue": 0,
+            "vue.js": 0,
+            "vue3": 0,
+            "react": 1,
+            "react.js": 1,
+            "html": 8,
+            "css": 9,
+            "fastapi": 0,
+            "node.js": 1,
+            "node": 1,
+            "sql": 0,
+            "mysql": 1,
+            "postgresql": 2,
+            "redis": 3,
+            "git": 0,
+        }
+        return ranks.get(key, 20)
+
+    def _skill_key(self, skill: str) -> str:
+        return re.sub(r"\s+", " ", skill.strip().lower())
