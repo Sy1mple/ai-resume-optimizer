@@ -11,6 +11,7 @@ class TaskType(str, Enum):
     resume_beautify = "resume_beautify"
     cover_letter = "cover_letter"
     interview_questions = "interview_questions"
+    job_match = "job_match"
 
 
 class ResumeGenerateInput(BaseModel):
@@ -46,6 +47,15 @@ class InterviewInput(BaseModel):
     job_title: str = Field(..., max_length=120)
     technical_direction: str = Field(..., max_length=160)
     experience_level: str | None = Field(default="Entry level", max_length=80)
+
+
+class JobMatchInput(BaseModel):
+    target_role: str = Field(..., max_length=120)
+    city: str | None = Field(default=None, max_length=80)
+    salary_range: str | None = Field(default=None, max_length=80)
+    platforms: list[str] = Field(default_factory=list, max_length=8)
+    keywords: str | None = Field(default=None, max_length=500)
+    resume_text: str = Field(..., min_length=20, max_length=16000)
 
 
 class GenerateRequest(BaseModel):

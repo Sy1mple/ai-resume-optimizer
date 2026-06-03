@@ -14,6 +14,7 @@ except ImportError:  # pragma: no cover - keeps the free local mode dependency-l
 from app.models import (
     CoverLetterInput,
     InterviewInput,
+    JobMatchInput,
     ResumeBeautifyInput,
     ResumeGenerateInput,
     ResumeOptimizeInput,
@@ -39,6 +40,10 @@ PROMPTS: dict[TaskType, str] = {
     ),
     TaskType.interview_questions: (
         "You are an interview coach. Generate likely technical and behavioral interview questions with concise reference answers."
+    ),
+    TaskType.job_match: (
+        "You are a recruiting operations analyst. Match the candidate resume to relevant job channels and openings. "
+        "Score fit honestly, identify gaps, and produce a compliant application plan without bypassing platform rules."
     ),
 }
 
@@ -95,6 +100,7 @@ class AIService:
             TaskType.resume_beautify: ResumeBeautifyInput,
             TaskType.cover_letter: CoverLetterInput,
             TaskType.interview_questions: InterviewInput,
+            TaskType.job_match: JobMatchInput,
         }
         return validators[task_type](**payload)
 
@@ -250,6 +256,48 @@ class AIService:
 
                 Sincerely,
                 Your Candidate
+                """
+            ).strip()
+
+        if task_type == TaskType.job_match:
+            platforms = ", ".join(model.platforms) if model.platforms else "Boss Zhipin, Lagou, Liepin, Zhaopin, LinkedIn"
+            location = model.city or "target city"
+            salary = model.salary_range or "market salary"
+            keywords = model.keywords or model.target_role
+            return dedent(
+                f"""
+                # Job Matching And Delivery Plan
+
+                ## Search Strategy
+                - Target role: {model.target_role}
+                - Location: {location}
+                - Expected compensation: {salary}
+                - Priority platforms: {platforms}
+                - Search keywords: {keywords}
+
+                ## High-Fit Roles To Prioritize
+                1. {model.target_role} - product-facing team, resume fit 92%
+                   - Why it fits: project delivery, tool stack alignment, and clear target direction.
+                   - Action: apply with the optimized resume and mention the most relevant project in the opening message.
+                2. Junior {model.target_role} - platform engineering team, resume fit 86%
+                   - Why it fits: practical engineering foundation and ATS-friendly keywords.
+                   - Action: strengthen metrics before submitting and add one concise technical achievement.
+                3. {model.target_role} Intern - growth or operations team, resume fit 81%
+                   - Why it fits: suitable for early-career profile and broad execution experience.
+                   - Action: submit quickly, then follow up with a short note within 48 hours.
+
+                ## Resume Gaps Before Delivery
+                - Add measurable results such as users, latency, conversion, saved time, or data volume.
+                - Mirror the job description keywords in skills and project bullets.
+                - Keep one tailored resume version per role family instead of sending one generic version.
+
+                ## Compliant Delivery Workflow
+                - Use official platform search or authorized APIs only.
+                - Track each application status, link, deadline, and follow-up date.
+                - Avoid duplicate high-frequency submissions that can trigger platform risk controls.
+
+                ## Resume Snapshot Used
+                {model.resume_text}
                 """
             ).strip()
 

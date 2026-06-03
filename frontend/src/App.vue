@@ -134,8 +134,9 @@
       </section>
 
       <nav class="side-rail" aria-label="Workspace sections">
-        <span :class="{ active: activeTask === 'resume_generate' }">{{ t('taskGenerate') }}</span>
-        <span :class="{ active: activeTask === 'interview_questions' }">{{ t('taskInterview') }}</span>
+        <span :class="{ active: activeTask === 'resume_generate' }" @click="activeTask = 'resume_generate'">{{ t('taskGenerate') }}</span>
+        <span :class="{ active: activeTask === 'job_match' }" @click="activeTask = 'job_match'">{{ t('taskJobMatch') }}</span>
+        <span :class="{ active: activeTask === 'interview_questions' }" @click="activeTask = 'interview_questions'">{{ t('taskInterview') }}</span>
         <span>{{ t('export') }}</span>
         <span>{{ t('history') }}</span>
       </nav>
@@ -245,6 +246,46 @@
                   <el-input v-model="forms.interview_questions.technical_direction" :placeholder="t('technicalDirectionPlaceholder')" />
                 </el-form-item>
               </template>
+
+              <template v-if="activeTask === 'job_match'">
+                <div class="grid-2">
+                  <el-form-item :label="t('targetRole')">
+                    <el-input v-model="forms.job_match.target_role" :placeholder="t('targetRolePlaceholder')" />
+                  </el-form-item>
+                  <el-form-item :label="t('targetCity')">
+                    <el-input v-model="forms.job_match.city" :placeholder="t('targetCityPlaceholder')" />
+                  </el-form-item>
+                  <el-form-item :label="t('salaryRange')">
+                    <el-input v-model="forms.job_match.salary_range" :placeholder="t('salaryPlaceholder')" />
+                  </el-form-item>
+                  <el-form-item :label="t('jobKeywords')">
+                    <el-input v-model="forms.job_match.keywords" :placeholder="t('jobKeywordsPlaceholder')" />
+                  </el-form-item>
+                </div>
+                <el-form-item :label="t('recruitingPlatforms')">
+                  <el-checkbox-group v-model="forms.job_match.platforms" class="platform-checkboxes">
+                    <el-checkbox-button
+                      v-for="platform in platformOptions"
+                      :key="platform.value"
+                      :label="platform.value"
+                    >
+                      {{ platform.label }}
+                    </el-checkbox-button>
+                  </el-checkbox-group>
+                </el-form-item>
+                <el-form-item :label="t('resumeForMatching')">
+                  <el-input
+                    v-model="forms.job_match.resume_text"
+                    type="textarea"
+                    :rows="7"
+                    :placeholder="t('resumeForMatchingPlaceholder')"
+                  />
+                </el-form-item>
+                <div class="connector-note">
+                  <Link />
+                  <span>{{ t('connectorNote') }}</span>
+                </div>
+              </template>
             </el-form>
           </div>
 
@@ -281,7 +322,52 @@
             </div>
           </div>
 
-          <div v-if="result" class="resume-preview" :class="previewStyleClass">
+          <div v-if="activeTask === 'job_match'" class="job-match-board">
+            <div class="match-summary">
+              <div>
+                <p class="eyebrow">{{ t('matchReadiness') }}</p>
+                <strong>{{ jobMatchScore }}%</strong>
+              </div>
+              <span>{{ t('deliveryQueue') }} {{ appliedCount }}/{{ jobMatches.length }}</span>
+            </div>
+            <div class="job-card-list">
+              <article v-for="job in jobMatches" :key="job.id" class="job-card">
+                <div class="job-card-top">
+                  <div>
+                    <p>{{ platformLabel(job.platform) }}</p>
+                    <h4>{{ job.title }}</h4>
+                  </div>
+                  <strong>{{ job.score }}%</strong>
+                </div>
+                <div class="job-meta-row">
+                  <span>{{ job.company }}</span>
+                  <span>{{ job.city }}</span>
+                  <span>{{ job.salary }}</span>
+                </div>
+                <div class="job-tags">
+                  <span v-for="tag in job.tags" :key="tag">{{ tag }}</span>
+                </div>
+                <p class="job-reason">{{ job.reason }}</p>
+                <div class="job-actions">
+                  <el-select v-model="applicationStatuses[job.id]" size="small">
+                    <el-option :label="t('statusTodo')" value="todo" />
+                    <el-option :label="t('statusOpened')" value="opened" />
+                    <el-option :label="t('statusApplied')" value="applied" />
+                    <el-option :label="t('statusFollowUp')" value="follow-up" />
+                  </el-select>
+                  <el-button type="primary" :icon="Promotion" @click="openJobPortal(job)">
+                    {{ t('openDelivery') }}
+                  </el-button>
+                </div>
+              </article>
+            </div>
+            <div v-if="result" class="match-report">
+              <p class="eyebrow">{{ t('aiMatchReport') }}</p>
+              <article v-html="renderedResult"></article>
+            </div>
+          </div>
+
+          <div v-else-if="result" class="resume-preview" :class="previewStyleClass">
             <div class="preview-header">
               <img v-if="photoDataUrl" :src="photoDataUrl" alt="Candidate portrait" />
               <div>
@@ -340,11 +426,14 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import {
+  Briefcase,
   CopyDocument,
   Delete,
   DocumentChecked,
   Download,
+  Link,
   MagicStick,
+  Promotion,
   Refresh,
   RefreshLeft,
   StarFilled,
@@ -462,8 +551,11 @@ const messages = {
     taskOptimize: 'Optimize & Style',
     taskBeautify: 'Beautify',
     taskInterview: 'Interview',
+    taskJobMatch: 'Job Match',
     resumeGenerator: 'Resume generator and optimizer',
     resumeGeneratorSubtitle: 'Create, rewrite, and style a recruiter-ready resume in one place.',
+    jobMatchStudio: 'Recruiting match and delivery',
+    jobMatchStudioSubtitle: 'Score job fit, build a delivery queue, and open compliant platform entries.',
     resumeOptimizer: 'Resume optimizer and stylist',
     resumeOptimizerSubtitle: 'Rewrite, strengthen, and format resume text in one workflow.',
     oneClickBeautifier: 'One-click beautifier',
@@ -483,7 +575,25 @@ const messages = {
     deleted: 'Deleted',
     loginFailed: 'Login failed',
     codeRequestFailed: 'Code request failed',
-    qrCodeFailed: 'QR code failed'
+    qrCodeFailed: 'QR code failed',
+    targetCity: 'Target city',
+    targetCityPlaceholder: 'Shanghai / Remote',
+    salaryRange: 'Salary range',
+    salaryPlaceholder: '20k-35k / month',
+    jobKeywords: 'Search keywords',
+    jobKeywordsPlaceholder: 'Vue, FastAPI, AI resume',
+    recruitingPlatforms: 'Recruiting platforms',
+    resumeForMatching: 'Resume for matching',
+    resumeForMatchingPlaceholder: 'Paste the resume you want to deliver. The current generated resume can be reused here.',
+    connectorNote: 'Platform connectors use official search or authorized API entry points. The demo creates safe delivery links and a trackable queue.',
+    matchReadiness: 'Match readiness',
+    deliveryQueue: 'Delivery queue',
+    statusTodo: 'To review',
+    statusOpened: 'Opened',
+    statusApplied: 'Applied',
+    statusFollowUp: 'Follow up',
+    openDelivery: 'Open delivery',
+    aiMatchReport: 'AI match report'
   },
   zh: {
     loginEyebrow: '安全入口',
@@ -582,8 +692,11 @@ const messages = {
     taskOptimize: '优化美化',
     taskBeautify: '美化',
     taskInterview: '面试',
+    taskJobMatch: '岗位匹配',
     resumeGenerator: '简历生成优化',
     resumeGeneratorSubtitle: '在一个入口里完成生成、改写、强化和版式风格整理。',
+    jobMatchStudio: '招聘匹配投放',
+    jobMatchStudioSubtitle: '匹配岗位、生成投递队列，并打开合规的招聘平台入口。',
     resumeOptimizer: '简历优化美化',
     resumeOptimizerSubtitle: '一次完成内容改写、表达强化和版式风格整理。',
     oneClickBeautifier: '一键美化',
@@ -603,7 +716,25 @@ const messages = {
     deleted: '已删除',
     loginFailed: '登录失败',
     codeRequestFailed: '验证码请求失败',
-    qrCodeFailed: '二维码生成失败'
+    qrCodeFailed: '二维码生成失败',
+    targetCity: '目标城市',
+    targetCityPlaceholder: '上海 / 远程',
+    salaryRange: '期望薪资',
+    salaryPlaceholder: '20k-35k / 月',
+    jobKeywords: '搜索关键词',
+    jobKeywordsPlaceholder: 'Vue、FastAPI、AI 简历',
+    recruitingPlatforms: '招聘渠道',
+    resumeForMatching: '用于匹配的简历',
+    resumeForMatchingPlaceholder: '粘贴要投递的简历，也可以把当前生成的简历复用到这里。',
+    connectorNote: '招聘网站连接器使用官方搜索入口或授权 API。当前版本生成安全投递链接和可追踪投递队列。',
+    matchReadiness: '匹配准备度',
+    deliveryQueue: '投递队列',
+    statusTodo: '待筛选',
+    statusOpened: '已打开',
+    statusApplied: '已投递',
+    statusFollowUp: '待跟进',
+    openDelivery: '打开投递',
+    aiMatchReport: 'AI 匹配报告'
   }
 }
 
@@ -630,6 +761,14 @@ const defaultForms = {
     job_title: 'Frontend Developer Intern',
     technical_direction: 'Vue 3, JavaScript, REST APIs, browser performance',
     experience_level: 'Entry level'
+  },
+  job_match: {
+    target_role: 'Frontend Developer',
+    city: 'Shanghai',
+    salary_range: '20k-35k / month',
+    platforms: ['boss', 'lagou', 'liepin'],
+    keywords: 'Vue, JavaScript, FastAPI, AI resume',
+    resume_text: 'Frontend developer with Vue, JavaScript, Python, FastAPI, SQL and Git experience. Built a campus job board with job posts, application flows, and API integrations.'
   }
 }
 
@@ -661,6 +800,7 @@ const selectedQrProvider = ref('wechat')
 const qrMode = ref(false)
 const qrImage = ref('')
 const qrSession = ref(null)
+const applicationStatuses = reactive({})
 let qrPollTimer = null
 
 const candidateName = computed(() => forms.resume_generate.name || 'Candidate')
@@ -694,9 +834,42 @@ const styleDescriptor = computed(() => {
   }
   return descriptions[activeVisualStyle.value] || descriptions.modern
 })
+const platformOptions = computed(() => [
+  { label: 'Boss直聘', value: 'boss' },
+  { label: '拉勾', value: 'lagou' },
+  { label: '猎聘', value: 'liepin' },
+  { label: '智联招聘', value: 'zhaopin' },
+  { label: 'LinkedIn', value: 'linkedin' }
+])
+const selectedPlatforms = computed(() => forms.job_match.platforms.length ? forms.job_match.platforms : ['boss', 'lagou', 'liepin'])
+const jobMatches = computed(() => {
+  const role = forms.job_match.target_role || forms.resume_generate.target_role || 'Frontend Developer'
+  const city = forms.job_match.city || 'Remote'
+  const salary = forms.job_match.salary_range || 'Market rate'
+  const resumeText = `${forms.job_match.resume_text} ${forms.resume_generate.skills} ${forms.resume_generate.projects}`.toLowerCase()
+  const keywordHits = ['vue', 'javascript', 'python', 'fastapi', 'sql', 'api', 'ai']
+    .filter((keyword) => resumeText.includes(keyword)).length
+  const baseScore = Math.min(76 + keywordHits * 3 + (result.value ? 5 : 0), 96)
+  return selectedPlatforms.value.slice(0, 5).map((platform, index) => ({
+    id: `${platform}-${index}`,
+    platform,
+    title: index === 0 ? role : `${index === 1 ? 'Junior ' : ''}${role}${index === 2 ? ' Intern' : ''}`,
+    company: ['Nova Talent Lab', 'BrightHire Cloud', 'Orbit Product Studio', 'FutureWorks AI', 'Northstar Tech'][index] || 'Hiring Team',
+    city,
+    salary,
+    score: Math.max(baseScore - index * 5, 72),
+    tags: buildJobTags(platform, index),
+    reason: locale.value === 'zh'
+      ? '技能关键词、项目经历和目标岗位方向匹配度较高，适合优先投递并定制开场说明。'
+      : 'Skills, project evidence, and target direction align well. Prioritize this role and tailor the opening note.'
+  }))
+})
+const jobMatchScore = computed(() => Math.round(jobMatches.value.reduce((sum, job) => sum + job.score, 0) / jobMatches.value.length))
+const appliedCount = computed(() => Object.values(applicationStatuses).filter((status) => ['opened', 'applied', 'follow-up'].includes(status)).length)
 
 const taskOptions = computed(() => [
   { label: t('taskGenerate'), value: 'resume_generate' },
+  { label: t('taskJobMatch'), value: 'job_match' },
   { label: t('taskInterview'), value: 'interview_questions' }
 ])
 
@@ -710,11 +883,56 @@ const taskMeta = computed(() => ({
     title: t('interviewCoach'),
     subtitle: t('interviewCoachSubtitle'),
     icon: UserFilled
+  },
+  job_match: {
+    title: t('jobMatchStudio'),
+    subtitle: t('jobMatchStudioSubtitle'),
+    icon: Briefcase
   }
 }))
 
 function t(key) {
   return messages[locale.value]?.[key] || messages.en[key] || key
+}
+
+function platformLabel(platform) {
+  return platformOptions.value.find((item) => item.value === platform)?.label || platform
+}
+
+function buildJobTags(platform, index) {
+  const zhTags = {
+    boss: ['即时沟通', '民企/初创', '移动端优先'],
+    lagou: ['互联网', '产品技术', '成长型团队'],
+    liepin: ['中高端', '猎头跟进', '稳定岗位'],
+    zhaopin: ['校招社招', '覆盖广', 'HR 流程'],
+    linkedin: ['国际化', '英文简历', '外企机会']
+  }
+  const enTags = {
+    boss: ['Fast chat', 'Private firms', 'Mobile first'],
+    lagou: ['Internet', 'Product tech', 'Growth team'],
+    liepin: ['Mid-senior', 'Headhunter', 'Stable role'],
+    zhaopin: ['Campus/social', 'Wide reach', 'HR process'],
+    linkedin: ['Global', 'English resume', 'MNC roles']
+  }
+  const tags = locale.value === 'zh' ? zhTags : enTags
+  return tags[platform] || ['ATS', 'Official entry', `Priority ${index + 1}`]
+}
+
+function platformSearchUrl(platform, job) {
+  const query = encodeURIComponent(`${job.title} ${forms.job_match.city || ''}`.trim())
+  const urls = {
+    boss: `https://www.zhipin.com/web/geek/job?query=${query}`,
+    lagou: `https://www.lagou.com/wn/jobs?kd=${query}`,
+    liepin: `https://www.liepin.com/zhaopin/?key=${query}`,
+    zhaopin: `https://sou.zhaopin.com/?kw=${query}`,
+    linkedin: `https://www.linkedin.com/jobs/search/?keywords=${query}`
+  }
+  return urls[platform] || `https://www.google.com/search?q=${query}`
+}
+
+function openJobPortal(job) {
+  applicationStatuses[job.id] = applicationStatuses[job.id] === 'applied' ? 'applied' : 'opened'
+  window.open(platformSearchUrl(job.platform, job), '_blank', 'noopener,noreferrer')
 }
 
 function toggleLanguage() {
@@ -845,6 +1063,13 @@ function buildResumeDraft() {
   ].join('\n')
 }
 
+function buildJobMatchPayload() {
+  return {
+    ...forms.job_match,
+    resume_text: forms.job_match.resume_text.trim() || buildResumeDraft()
+  }
+}
+
 async function submit() {
   loading.value = true
   try {
@@ -859,6 +1084,8 @@ async function submit() {
           resume_text: buildResumeDraft(),
           photo_included: Boolean(photoDataUrl.value)
         }
+      : activeTask.value === 'job_match'
+        ? buildJobMatchPayload()
       : { ...forms[activeTask.value] }
     if (activeTask.value === 'interview_questions') {
       payload.experience_level = payload.experience_level || 'Entry level'
@@ -866,7 +1093,10 @@ async function submit() {
     const provider = openaiApiKey.value ? 'openai' : 'free'
     const response = await generateContent(requestTask, payload, provider, openaiApiKey.value)
     result.value = response.content
-    forms.resume_generate.source_resume_text = response.content
+    if (activeTask.value === 'resume_generate') {
+      forms.resume_generate.source_resume_text = response.content
+      forms.job_match.resume_text = response.content
+    }
     await loadHistory()
     ElMessage.success(t('generatedSuccessfully'))
   } catch (error) {
@@ -986,6 +1216,7 @@ async function removeHistory(id) {
 function formatTaskType(taskType) {
   if (['resume_beautify', 'resume_optimize'].includes(taskType)) return t('taskGenerate')
   if (taskType === 'cover_letter') return locale.value === 'zh' ? '旧任务' : 'Legacy task'
+  if (taskType === 'job_match') return t('taskJobMatch')
   return taskOptions.value.find((item) => item.value === taskType)?.label || taskType
 }
 
@@ -1020,6 +1251,14 @@ watch(selectedQrProvider, (provider) => {
     startQrSession(provider)
   }
 })
+
+watch(jobMatches, (matches) => {
+  matches.forEach((job) => {
+    if (!applicationStatuses[job.id]) {
+      applicationStatuses[job.id] = 'todo'
+    }
+  })
+}, { immediate: true })
 
 onMounted(() => {
   loadHistory()
