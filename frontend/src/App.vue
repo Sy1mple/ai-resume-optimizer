@@ -134,8 +134,8 @@
       </section>
 
       <nav class="side-rail" aria-label="Workspace sections">
-        <span class="active">{{ t('taskGenerate') }}</span>
-        <span>{{ t('taskBeautify') }}</span>
+        <span :class="{ active: activeTask === 'resume_generate' }">{{ t('taskGenerate') }}</span>
+        <span :class="{ active: activeTask === 'resume_optimize' }">{{ t('taskOptimize') }}</span>
         <span>{{ t('export') }}</span>
         <span>{{ t('history') }}</span>
       </nav>
@@ -160,24 +160,6 @@
           <el-button text @click="logout">{{ t('logout') }}</el-button>
         </div>
       </header>
-
-      <section class="topbar-metrics" aria-label="Workspace status">
-        <div>
-          <span>{{ t('ats') }}</span>
-          <strong>{{ result ? t('ready') : t('draft') }}</strong>
-          <small>{{ resumeScore }}%</small>
-        </div>
-        <div>
-          <span>{{ t('visualStyle') }}</span>
-          <strong>{{ styleLabel }}</strong>
-          <small>{{ t('taskBeautify') }}</small>
-        </div>
-        <div>
-          <span>{{ t('export') }}</span>
-          <strong>PDF / DOCX / TXT</strong>
-          <small>{{ photoDataUrl ? t('included') : t('optional') }}</small>
-        </div>
-      </section>
 
       <div class="workspace-grid">
         <section class="task-panel">
@@ -220,21 +202,12 @@
               </template>
 
               <template v-if="activeTask === 'resume_optimize'">
-                <el-form-item :label="t('targetRole')">
-                  <el-input v-model="forms.resume_optimize.target_role" :placeholder="t('optimizeRolePlaceholder')" />
-                </el-form-item>
-                <el-form-item :label="t('resumeText')">
-                  <el-input v-model="forms.resume_optimize.resume_text" type="textarea" :rows="12" />
-                </el-form-item>
-              </template>
-
-              <template v-if="activeTask === 'resume_beautify'">
                 <div class="grid-2">
                   <el-form-item :label="t('targetRole')">
-                    <el-input v-model="forms.resume_beautify.target_role" :placeholder="t('targetRolePlaceholder')" />
+                    <el-input v-model="forms.resume_optimize.target_role" :placeholder="t('optimizeRolePlaceholder')" />
                   </el-form-item>
                   <el-form-item :label="t('visualStyle')">
-                    <el-select v-model="forms.resume_beautify.style">
+                    <el-select v-model="forms.resume_optimize.style">
                       <el-option :label="t('modern')" value="modern" />
                       <el-option :label="t('executive')" value="executive" />
                       <el-option :label="t('compactAts')" value="compact-ats" />
@@ -242,7 +215,7 @@
                   </el-form-item>
                 </div>
                 <el-form-item :label="t('resumeContentToBeautify')">
-                  <el-input v-model="forms.resume_beautify.resume_text" type="textarea" :rows="12" />
+                  <el-input v-model="forms.resume_optimize.resume_text" type="textarea" :rows="12" />
                 </el-form-item>
               </template>
 
@@ -317,7 +290,7 @@
             <div class="preview-header">
               <img v-if="photoDataUrl" :src="photoDataUrl" alt="Candidate portrait" />
               <div>
-                <span>{{ forms.resume_generate.target_role || forms.resume_beautify.target_role || t('targetRole') }}</span>
+                <span>{{ forms.resume_generate.target_role || forms.resume_optimize.target_role || t('targetRole') }}</span>
                 <strong>{{ candidateName }}</strong>
               </div>
             </div>
@@ -488,14 +461,14 @@ const messages = {
     created: 'Created',
     actions: 'Actions',
     taskGenerate: 'Generate',
-    taskOptimize: 'Optimize',
+    taskOptimize: 'Optimize & Style',
     taskBeautify: 'Beautify',
     taskLetter: 'Letter',
     taskInterview: 'Interview',
     resumeGenerator: 'Resume generator',
     resumeGeneratorSubtitle: 'Create a recruiter-ready resume from structured profile details.',
-    resumeOptimizer: 'Resume optimizer',
-    resumeOptimizerSubtitle: 'Rewrite rough resume text into stronger professional bullet points.',
+    resumeOptimizer: 'Resume optimizer and stylist',
+    resumeOptimizerSubtitle: 'Rewrite, strengthen, and format resume text in one workflow.',
     oneClickBeautifier: 'One-click beautifier',
     oneClickBeautifierSubtitle: 'Turn the current draft into a polished, formatted resume layout.',
     coverLetter: 'Cover letter',
@@ -607,14 +580,14 @@ const messages = {
     created: '创建时间',
     actions: '操作',
     taskGenerate: '生成',
-    taskOptimize: '优化',
+    taskOptimize: '优化美化',
     taskBeautify: '美化',
     taskLetter: '求职信',
     taskInterview: '面试',
     resumeGenerator: '简历生成',
     resumeGeneratorSubtitle: '根据结构化资料生成适合招聘查看的简历。',
-    resumeOptimizer: '简历优化',
-    resumeOptimizerSubtitle: '把粗糙简历改写成更专业、更有结果导向的表达。',
+    resumeOptimizer: '简历优化美化',
+    resumeOptimizerSubtitle: '一次完成内容改写、表达强化和版式风格整理。',
     oneClickBeautifier: '一键美化',
     oneClickBeautifierSubtitle: '把当前草稿整理成更精致的版式和表达。',
     coverLetter: '求职信',
@@ -651,6 +624,7 @@ const defaultForms = {
   },
   resume_optimize: {
     target_role: 'Frontend Developer',
+    style: 'modern',
     resume_text: 'I made a website for students to find jobs. I used Vue and Python. I worked with classmates and fixed bugs.'
   },
   resume_beautify: {
@@ -726,7 +700,7 @@ const resumeScore = computed(() => {
   return Math.min(score, 100)
 })
 const renderedResult = computed(() => markdownToHtml(result.value))
-const activeVisualStyle = computed(() => forms.resume_beautify.style || 'modern')
+const activeVisualStyle = computed(() => forms.resume_optimize.style || forms.resume_beautify.style || 'modern')
 const previewStyleClass = computed(() => `resume-style-${activeVisualStyle.value}`)
 const styleLabel = computed(() => {
   const labels = {
@@ -748,7 +722,6 @@ const styleDescriptor = computed(() => {
 const taskOptions = computed(() => [
   { label: t('taskGenerate'), value: 'resume_generate' },
   { label: t('taskOptimize'), value: 'resume_optimize' },
-  { label: t('taskBeautify'), value: 'resume_beautify' },
   { label: t('taskLetter'), value: 'cover_letter' },
   { label: t('taskInterview'), value: 'interview_questions' }
 ])
@@ -763,11 +736,6 @@ const taskMeta = computed(() => ({
     title: t('resumeOptimizer'),
     subtitle: t('resumeOptimizerSubtitle'),
     icon: MagicStick
-  },
-  resume_beautify: {
-    title: t('oneClickBeautifier'),
-    subtitle: t('oneClickBeautifierSubtitle'),
-    icon: StarFilled
   },
   cover_letter: {
     title: t('coverLetter'),
@@ -899,19 +867,19 @@ async function submit() {
   loading.value = true
   try {
     const payload = { ...forms[activeTask.value] }
+    let requestTask = activeTask.value
     if (activeTask.value === 'resume_generate') {
       payload.photo_data_url = photoDataUrl.value
     }
-    if (activeTask.value === 'resume_beautify') {
+    if (activeTask.value === 'resume_optimize') {
+      requestTask = 'resume_beautify'
       payload.photo_included = Boolean(photoDataUrl.value)
     }
-    const response = await generateContent(activeTask.value, payload)
+    const response = await generateContent(requestTask, payload)
     result.value = response.content
     apiSource.value = response.source
-    if (activeTask.value !== 'resume_beautify') {
-      forms.resume_beautify.resume_text = response.content
-      forms.resume_beautify.target_role = forms.resume_generate.target_role || forms.resume_optimize.target_role
-    }
+    forms.resume_optimize.resume_text = response.content
+    forms.resume_optimize.target_role = forms.resume_generate.target_role || forms.resume_optimize.target_role
     await loadHistory()
     ElMessage.success(t('generatedSuccessfully'))
   } catch (error) {
@@ -927,10 +895,9 @@ function resetForm() {
 }
 
 function prepareBeautify() {
-  forms.resume_beautify.resume_text = result.value
-  forms.resume_beautify.target_role = forms.resume_generate.target_role || forms.resume_beautify.target_role
-  forms.resume_beautify.photo_included = Boolean(photoDataUrl.value)
-  activeTask.value = 'resume_beautify'
+  forms.resume_optimize.resume_text = result.value
+  forms.resume_optimize.target_role = forms.resume_generate.target_role || forms.resume_optimize.target_role
+  activeTask.value = 'resume_optimize'
 }
 
 async function copyResult() {
@@ -996,13 +963,13 @@ async function loadHistory() {
 
 function useHistory(row) {
   result.value = row.content
-  activeTask.value = row.task_type
+  activeTask.value = row.task_type === 'resume_beautify' ? 'resume_optimize' : row.task_type
 }
 
 function beautifyHistory(row) {
   result.value = row.content
-  forms.resume_beautify.resume_text = row.content
-  activeTask.value = 'resume_beautify'
+  forms.resume_optimize.resume_text = row.content
+  activeTask.value = 'resume_optimize'
 }
 
 async function removeHistory(id) {
@@ -1012,6 +979,7 @@ async function removeHistory(id) {
 }
 
 function formatTaskType(taskType) {
+  if (taskType === 'resume_beautify') return t('taskOptimize')
   return taskOptions.value.find((item) => item.value === taskType)?.label || taskType
 }
 
