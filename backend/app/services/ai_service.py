@@ -144,6 +144,7 @@ class AIService:
             style_note += (
                 "\n\nResume output rules:\n"
                 "- Do not include internal UI or template metadata such as visual style, modern, executive, compact ATS, photo mode, scan mode, or output language.\n"
+                "- Do not add Professional Summary, Career Overview, Core Strengths, 职业概述, or 核心优势 sections unless the user explicitly provided them.\n"
                 "- The final resume must read like a real resume, not a system report or formatting explanation.\n"
                 "- All section titles and visible labels must match output_language.\n"
             )
@@ -177,25 +178,16 @@ class AIService:
             language = self._output_language(model)
             skills_section = self._format_skills_section(model.skills, language)
             projects_section = self._format_project_section(model, language)
-            summary_title = "Professional Summary" if language == "en" else "职业概述"
             education_title = "Education" if language == "en" else "教育经历"
             projects_title = "Projects" if language == "en" else "项目经历"
             skills_title = "Skills" if language == "en" else "专业技能"
             email_label = "Email" if language == "en" else "邮箱"
             phone_label = "Phone" if language == "en" else "电话"
-            summary = (
-                f"Motivated candidate targeting {model.target_role or 'an entry-level role'}, with hands-on project experience, strong learning ability, and a practical skill set."
-                if language == "en"
-                else f"目标岗位为{model.target_role or '相关岗位'}，具备项目实践经验、较强学习能力和清晰的技术能力结构。"
-            )
             return self._clean_markdown(
                 f"""
                 # {model.name}
 
                 **{email_label}:** {model.email} | **{phone_label}:** {model.phone}
-
-                ## {summary_title}
-                {summary}
 
                 ## {education_title}
                 {model.education}
@@ -268,41 +260,13 @@ class AIService:
             if model.target_role:
                 contact_items.append(f"**{target_label}:** {model.target_role}")
             contact_line = " | ".join(contact_items)
-            education_section = f"## {education_title}\n{resume_parts['education']}\n\n" if resume_parts["education"] else ""
-            project_content = self._compact_project_content(resume_parts["projects"] or refined_content, language)
-            if "executive" in style:
-                style_sections = (
-                    "## Professional Summary\nStrategic candidate with strong ownership, clear communication, and practical project delivery experience.\n\n"
-                    "## Core Strengths\n- Demonstrates structured thinking, reliable execution, and outcome-oriented project delivery.\n"
-                    "- Communicates technical trade-offs clearly and collaborates effectively across roles."
-                    if language == "en"
-                    else "## 职业概述\n具备较强责任心、清晰沟通能力和项目落地经验，能够围绕目标岗位完成稳定交付。\n\n"
-                    "## 核心优势\n- 具备结构化思考、可靠执行和结果导向的项目交付能力。\n"
-                    "- 能够清晰说明技术取舍，并与产品、后端等角色高效协作。"
-                )
-            elif "compact" in style:
-                style_sections = (
-                    "## Professional Summary\nCandidate aligned to the target role with practical project experience, clear technical keywords, and delivery awareness."
-                    if language == "en"
-                    else "## 职业概述\n目标岗位匹配度较高，具备项目实践经验、清晰技术关键词和交付意识。"
-                )
-            else:
-                style_sections = (
-                    "## Professional Summary\nResults-oriented candidate with practical project delivery experience, clear communication, and a focused technical skill set.\n\n"
-                    "## Core Strengths\n- Converts requirements into usable product features and complete delivery outcomes.\n"
-                    "- Learns new tools quickly and applies them in real project scenarios."
-                    if language == "en"
-                    else "## 职业概述\n具备项目交付经验、清晰沟通能力和聚焦的技术能力结构，能够围绕业务需求完成开发任务。\n\n"
-                    "## 核心优势\n- 能够将需求转化为可用的产品功能和完整交付结果。\n"
-                    "- 学习新工具速度快，能够结合真实项目场景落地应用。"
-                )
+            education_section = f"## {education_title}\n{resume_parts['education']}" if resume_parts["education"] else ""
+            project_content = self._compact_project_content(resume_parts["projects"], language)
             return self._clean_markdown(
                 f"""
                 # {resume_title}
 
                 {contact_line}
-
-                {style_sections}
 
                 {education_section}
 
@@ -430,8 +394,12 @@ class AIService:
 
     def _extract_single_line(self, text: str, labels: list[str]) -> str:
         label_pattern = "|".join(re.escape(label) for label in labels)
-        match = re.search(rf"(?:^|\n)\s*(?:{label_pattern})\s*[:：]\s*(.+)", text, flags=re.IGNORECASE)
-        return match.group(1).strip() if match else ""
+        match = re.search(
+            rf"(?:^|\n|\|)\s*\**(?:{label_pattern})\**\s*[:：]\**\s*([^|\n]+)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        return self._strip_inline_markdown(match.group(1)).strip() if match else ""
 
     def _extract_labeled_block(self, text: str, labels: list[str]) -> str:
         start_pattern = "|".join(re.escape(label) for label in labels)
@@ -448,17 +416,31 @@ class AIService:
             text,
             flags=re.IGNORECASE | re.DOTALL,
         )
-        return match.group(1).strip() if match else ""
+        if match:
+            return match.group(1).strip()
+        heading_match = re.search(
+            rf"(?:^|\n)\s*#+\s*(?:{start_pattern})\s*\n(.+?)(?=\n\s*#+\s+|\Z)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        return heading_match.group(1).strip() if heading_match else ""
 
     def _extract_project_block(self, text: str) -> str:
         start_pattern = "|".join(re.escape(label) for label in ["Projects", "Project Experience", "项目经历"])
         stop_pattern = "|".join(re.escape(label) for label in ["Skills", "技能", "专业技能", "核心技能"])
-        match = re.search(
+        labeled_match = re.search(
             rf"(?:^|\n)\s*(?:{start_pattern})\s*[:：]\s*(.+?)(?=\n\s*(?:{stop_pattern})\s*[:：]|\Z)",
             text,
             flags=re.IGNORECASE | re.DOTALL,
         )
-        return match.group(1).strip() if match else ""
+        if labeled_match:
+            return labeled_match.group(1).strip()
+        heading_match = re.search(
+            rf"(?:^|\n)\s*#+\s*(?:{start_pattern})\s*\n(.+?)(?=\n\s*#+\s*(?:{stop_pattern})\s*\n|\n\s*#+\s+|\Z)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        return heading_match.group(1).strip() if heading_match else ""
 
     def _format_project_section(self, model: Any, language: str) -> str:
         parts = {
@@ -531,8 +513,8 @@ class AIService:
         detail = clean
         if ":" in clean or "：" in clean:
             name, detail = re.split(r"[:：]", clean, maxsplit=1)
-            name = name.strip()
-            detail = detail.strip()
+            name = self._strip_inline_markdown(name).strip()
+            detail = self._strip_inline_markdown(detail).strip()
         segments = [segment.strip() for segment in re.split(r"[；;]\s*", detail) if segment.strip()]
         if not segments:
             return f"- {self._ensure_sentence_end(clean, language)}"
@@ -563,6 +545,9 @@ class AIService:
         if clean[-1] in ".。!！?？":
             return clean
         return f"{clean}." if language == "en" else f"{clean}。"
+
+    def _strip_inline_markdown(self, text: str) -> str:
+        return re.sub(r"[*_`]+", "", text).strip()
 
     def _strip_leading_terms(self, text: str, terms: list[str]) -> str:
         cleaned = text.strip()
