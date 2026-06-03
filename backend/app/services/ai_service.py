@@ -268,7 +268,7 @@ class AIService:
                 contact_items.append(f"**{target_label}:** {model.target_role}")
             contact_line = " | ".join(contact_items)
             education_section = f"## {education_title}\n{resume_parts['education']}\n\n" if resume_parts["education"] else ""
-            project_content = resume_parts["projects"] or refined_content
+            project_content = self._compact_project_content(resume_parts["projects"] or refined_content, language)
             if "executive" in style:
                 style_sections = (
                     "## Professional Summary\nStrategic candidate with strong ownership, clear communication, and practical project delivery experience.\n\n"
@@ -424,7 +424,7 @@ class AIService:
             "email": self._extract_single_line(resume_text, ["Email", "邮箱"]),
             "phone": self._extract_single_line(resume_text, ["Phone", "电话"]),
             "education": self._extract_labeled_block(resume_text, ["Education", "教育经历"]),
-            "projects": self._extract_labeled_block(resume_text, ["Projects", "Project Experience", "项目经历"]),
+            "projects": self._extract_project_block(resume_text),
         }
 
     def _extract_single_line(self, text: str, labels: list[str]) -> str:
@@ -437,6 +437,8 @@ class AIService:
         stop_labels = [
             "Name", "姓名", "Email", "邮箱", "Phone", "电话", "Target role", "目标岗位",
             "Education", "教育经历", "Projects", "Project Experience", "项目经历",
+            "Project introduction", "项目介绍", "Project architecture", "项目架构",
+            "Technical architecture", "技术架构", "Personal responsibilities", "个人职责",
             "Skills", "技能", "专业技能", "核心技能"
         ]
         stop_pattern = "|".join(re.escape(label) for label in stop_labels)
@@ -447,21 +449,105 @@ class AIService:
         )
         return match.group(1).strip() if match else ""
 
+    def _extract_project_block(self, text: str) -> str:
+        start_pattern = "|".join(re.escape(label) for label in ["Projects", "Project Experience", "项目经历"])
+        stop_pattern = "|".join(re.escape(label) for label in ["Skills", "技能", "专业技能", "核心技能"])
+        match = re.search(
+            rf"(?:^|\n)\s*(?:{start_pattern})\s*[:：]\s*(.+?)(?=\n\s*(?:{stop_pattern})\s*[:：]|\Z)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        return match.group(1).strip() if match else ""
+
     def _format_project_section(self, model: Any, language: str) -> str:
-        structured = [
-            ("Project introduction", "项目介绍", getattr(model, "project_intro", None)),
-            ("Project architecture", "项目架构", getattr(model, "project_architecture", None)),
-            ("Technical architecture", "技术架构", getattr(model, "technical_architecture", None)),
-            ("Personal responsibilities", "个人职责", getattr(model, "personal_responsibilities", None)),
-        ]
-        if any(value for _, _, value in structured):
-            lines: list[str] = []
-            for en_title, zh_title, value in structured:
-                if value:
-                    title = en_title if language == "en" else zh_title
-                    lines.append(f"### {title}\n{value}")
-            return "\n\n".join(lines)
-        return getattr(model, "projects", "")
+        parts = {
+            "intro": getattr(model, "project_intro", None),
+            "architecture": getattr(model, "project_architecture", None),
+            "technical": getattr(model, "technical_architecture", None),
+            "responsibilities": getattr(model, "personal_responsibilities", None),
+        }
+        if any(parts.values()):
+            if language == "en":
+                bullets = []
+                if parts["intro"]:
+                    bullets.append(f"- Built {parts['intro']}")
+                if parts["architecture"] or parts["technical"]:
+                    bullets.append(f"- Designed and implemented the solution using {self._join_sentence_parts([parts['architecture'], parts['technical']], language)}.")
+                if parts["responsibilities"]:
+                    bullets.append(f"- Owned {self._strip_leading_terms(parts['responsibilities'], ['Owned', 'Responsible for'])}")
+            else:
+                bullets = []
+                if parts["intro"]:
+                    bullets.append(f"- 参与建设{parts['intro']}")
+                if parts["architecture"] or parts["technical"]:
+                    bullets.append(f"- 基于{self._join_sentence_parts([parts['architecture'], parts['technical']], language)}，完成系统方案设计与落地。")
+                if parts["responsibilities"]:
+                    bullets.append(f"- 主要负责{self._strip_leading_terms(parts['responsibilities'], ['主要负责', '负责'])}")
+            return "\n".join(bullets)
+        return self._compact_project_content(getattr(model, "projects", ""), language)
+
+    def _compact_project_content(self, project_text: str, language: str) -> str:
+        clean = project_text.strip()
+        if not clean:
+            return ""
+        fields = {
+            "intro": self._extract_labeled_block(clean, ["Project introduction", "项目介绍"]),
+            "architecture": self._extract_labeled_block(clean, ["Project architecture", "项目架构"]),
+            "technical": self._extract_labeled_block(clean, ["Technical architecture", "技术架构"]),
+            "responsibilities": self._extract_labeled_block(clean, ["Personal responsibilities", "个人职责"]),
+        }
+        if any(fields.values()):
+            if language == "en":
+                bullets = []
+                if fields["intro"]:
+                    bullets.append(f"- Delivered {fields['intro']}")
+                if fields["architecture"] or fields["technical"]:
+                    bullets.append(f"- Implemented the technical solution with {self._join_sentence_parts([fields['architecture'], fields['technical']], language)}.")
+                if fields["responsibilities"]:
+                    bullets.append(f"- Owned {self._strip_leading_terms(fields['responsibilities'], ['Owned', 'Responsible for'])}")
+            else:
+                bullets = []
+                if fields["intro"]:
+                    bullets.append(f"- 参与建设{fields['intro']}")
+                if fields["architecture"] or fields["technical"]:
+                    bullets.append(f"- 基于{self._join_sentence_parts([fields['architecture'], fields['technical']], language)}，完成前后端方案落地。")
+                if fields["responsibilities"]:
+                    bullets.append(f"- 主要负责{self._strip_leading_terms(fields['responsibilities'], ['主要负责', '负责'])}")
+            return "\n".join(bullets)
+        if "\n" in clean:
+            lines = [line.strip(" -•\t") for line in clean.splitlines() if line.strip()]
+            return "\n".join(f"- {line}" for line in lines[:4])
+        segments = [segment.strip() for segment in re.split(r"[；;]\s*", clean) if segment.strip()]
+        if len(segments) > 1:
+            return "\n".join(f"- {self._format_plain_project_segment(segment, language)}" for segment in segments[:4])
+        return f"- {self._ensure_sentence_end(clean, language)}"
+
+    def _join_sentence_parts(self, parts: list[str | None], language: str) -> str:
+        separator = ", " if language == "en" else "，"
+        return separator.join(part.strip(" 。.；;") for part in parts if part and part.strip())
+
+    def _format_plain_project_segment(self, text: str, language: str) -> str:
+        clean = text.strip()
+        if language == "en" and clean:
+            clean = f"{clean[0].upper()}{clean[1:]}"
+        if language == "zh":
+            clean = re.sub(r"^个人负责", "负责", clean)
+        return self._ensure_sentence_end(clean, language)
+
+    def _ensure_sentence_end(self, text: str, language: str) -> str:
+        clean = text.strip()
+        if not clean:
+            return clean
+        if clean[-1] in ".。!！?？":
+            return clean
+        return f"{clean}." if language == "en" else f"{clean}。"
+
+    def _strip_leading_terms(self, text: str, terms: list[str]) -> str:
+        cleaned = text.strip()
+        for term in terms:
+            pattern = rf"^\s*{re.escape(term)}\s*[:：,，]?\s*"
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+        return cleaned
 
     def _format_skills_section(self, raw_skills: str, language: str = "zh") -> str:
         skills = self._sort_skill_keywords(self._split_skill_keywords(raw_skills))

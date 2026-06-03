@@ -246,10 +246,10 @@
               <template v-if="activeTask === 'resume_generate'">
                 <div class="grid-2">
                   <el-form-item :label="t('name')">
-                    <el-input v-model="forms.resume_generate.name" :placeholder="t('namePlaceholder')" />
+                    <el-input v-model="forms.resume_generate.name" :placeholder="resumePlaceholder('name')" />
                   </el-form-item>
                   <el-form-item :label="t('targetRole')">
-                    <el-input v-model="forms.resume_generate.target_role" :placeholder="t('targetRolePlaceholder')" />
+                    <el-input v-model="forms.resume_generate.target_role" :placeholder="resumePlaceholder('target_role')" />
                   </el-form-item>
                   <el-form-item :label="t('visualStyle')">
                     <el-select v-model="forms.resume_generate.style">
@@ -259,29 +259,20 @@
                     </el-select>
                   </el-form-item>
                   <el-form-item :label="t('email')">
-                    <el-input v-model="forms.resume_generate.email" placeholder="alex@example.com" />
+                    <el-input v-model="forms.resume_generate.email" :placeholder="resumePlaceholder('email')" />
                   </el-form-item>
                   <el-form-item :label="t('phone')">
-                    <el-input v-model="forms.resume_generate.phone" placeholder="+1 555 0100" />
+                    <el-input v-model="forms.resume_generate.phone" :placeholder="resumePlaceholder('phone')" />
                   </el-form-item>
                 </div>
                 <el-form-item :label="t('education')">
-                  <el-input v-model="forms.resume_generate.education" type="textarea" :rows="3" />
+                  <el-input v-model="forms.resume_generate.education" type="textarea" :rows="3" :placeholder="resumePlaceholder('education')" />
                 </el-form-item>
-                <el-form-item :label="t('projectIntro')">
-                  <el-input v-model="forms.resume_generate.project_intro" type="textarea" :rows="3" :placeholder="t('projectIntroPlaceholder')" />
-                </el-form-item>
-                <el-form-item :label="t('projectArchitecture')">
-                  <el-input v-model="forms.resume_generate.project_architecture" type="textarea" :rows="3" :placeholder="t('projectArchitecturePlaceholder')" />
-                </el-form-item>
-                <el-form-item :label="t('technicalArchitecture')">
-                  <el-input v-model="forms.resume_generate.technical_architecture" type="textarea" :rows="3" :placeholder="t('technicalArchitecturePlaceholder')" />
-                </el-form-item>
-                <el-form-item :label="t('personalResponsibilities')">
-                  <el-input v-model="forms.resume_generate.personal_responsibilities" type="textarea" :rows="4" :placeholder="t('personalResponsibilitiesPlaceholder')" />
+                <el-form-item :label="t('projectPlan')">
+                  <el-input v-model="forms.resume_generate.projects" type="textarea" :rows="7" :placeholder="resumePlaceholder('projects')" />
                 </el-form-item>
                 <el-form-item :label="t('skills')">
-                  <el-input v-model="forms.resume_generate.skills" type="textarea" :rows="3" />
+                  <el-input v-model="forms.resume_generate.skills" type="textarea" :rows="3" :placeholder="resumePlaceholder('skills')" />
                 </el-form-item>
                 <el-form-item :label="t('resumeContentToBeautify')">
                   <el-input v-model="forms.resume_generate.source_resume_text" type="textarea" :rows="5" :placeholder="t('sourceResumePlaceholder')" />
@@ -351,7 +342,7 @@
           <div class="actions">
             <el-button :icon="RefreshLeft" @click="resetForm">{{ t('reset') }}</el-button>
             <el-button :icon="StarFilled" :disabled="!result" @click="prepareBeautify">{{ t('beautifyCurrent') }}</el-button>
-            <el-button type="primary" :icon="MagicStick" :loading="loading" @click="submit">
+            <el-button type="primary" :icon="MagicStick" :loading="loading" :disabled="loading" @click="submit">
               {{ t('generate') }}
             </el-button>
           </div>
@@ -430,13 +421,9 @@
             <div class="preview-header">
               <img v-if="photoDataUrl" :src="photoDataUrl" alt="Candidate portrait" />
               <div>
-                <span>{{ forms.resume_generate.target_role || t('targetRole') }}</span>
+                <span>{{ resumeValue('target_role') }}</span>
                 <strong>{{ candidateName }}</strong>
               </div>
-            </div>
-            <div class="style-strip">
-              <span>{{ styleLabel }}</span>
-              <i>{{ styleDescriptor }}</i>
             </div>
             <article v-html="renderedResult"></article>
           </div>
@@ -576,6 +563,7 @@ const messages = {
     phone: 'Phone',
     education: 'Education',
     projects: 'Projects',
+    projectPlan: 'Project experience',
     projectIntro: 'Project introduction',
     projectIntroPlaceholder: 'What the project does, users served, business scenario, and core value.',
     projectArchitecture: 'Project architecture',
@@ -737,6 +725,7 @@ const messages = {
     phone: '电话',
     education: '教育经历',
     projects: '项目经历',
+    projectPlan: '项目经历方案',
     projectIntro: '项目介绍',
     projectIntroPlaceholder: '说明项目背景、服务对象、业务场景和核心价值。',
     projectArchitecture: '项目架构',
@@ -845,7 +834,7 @@ const defaultFormPresets = {
       email: 'chen@example.com',
       phone: '138 0000 0000',
       education: '计算机科学与技术本科，2026 届。主修课程：数据结构、数据库、软件工程、Web 开发。',
-      projects: '校园招聘系统：负责 Vue 页面、FastAPI 接口和 SQL 数据表设计。',
+      projects: '校园招聘系统：面向学生和企业提供职位浏览、岗位发布、简历投递和进度管理；基于 Vue 3、Element Plus、FastAPI、REST API 和 SQL 数据库完成前后端协作；个人负责核心页面开发、接口联调、数据表设计和投递流程可用性优化。',
       project_intro: '面向学生和企业的校园招聘系统，支持职位浏览、岗位发布、简历投递和申请进度管理。',
       project_architecture: '前端使用 Vue 构建页面与状态交互，后端通过 FastAPI 提供 REST API，数据库按用户、职位、投递记录等模块拆分。',
       technical_architecture: 'Vue 3、JavaScript、Element Plus、FastAPI、SQL 数据库、REST API、Git 协作流程。',
@@ -882,7 +871,7 @@ const defaultFormPresets = {
       email: 'alex@example.com',
       phone: '+1 555 0100',
       education: 'B.S. in Computer Science, 2026. Coursework: data structures, databases, software engineering, and web development.',
-      projects: 'Campus job board: built Vue pages, FastAPI endpoints, and PostgreSQL schema for job posts and applications.',
+      projects: 'Campus job board: built a job browsing, posting, resume submission, and application tracking workflow for students and employers; implemented the solution with Vue 3, Element Plus, FastAPI, REST APIs, and a SQL database; owned core page development, API integration, table design, and application flow improvements.',
       project_intro: 'Campus job board for students and employers, covering job browsing, posting, resume submission, and application tracking.',
       project_architecture: 'Vue frontend communicates with FastAPI backend through REST APIs. Backend separates users, job posts, and application records into clear modules.',
       technical_architecture: 'Vue 3, JavaScript, Element Plus, FastAPI, SQL database, REST API, Git workflow.',
@@ -915,7 +904,43 @@ const defaultFormPresets = {
   }
 }
 
-const cloneDefaults = (lang = initialLocale) => JSON.parse(JSON.stringify(defaultFormPresets[lang] || defaultFormPresets.zh))
+const cloneDefaults = () => ({
+  resume_generate: {
+    name: '',
+    email: '',
+    phone: '',
+    education: '',
+    projects: '',
+    project_intro: '',
+    project_architecture: '',
+    technical_architecture: '',
+    personal_responsibilities: '',
+    skills: '',
+    target_role: '',
+    style: 'modern',
+    source_resume_text: '',
+    photo_data_url: ''
+  },
+  resume_beautify: {
+    target_role: '',
+    style: 'modern',
+    resume_text: '',
+    photo_included: false
+  },
+  interview_questions: {
+    job_title: '',
+    technical_direction: '',
+    experience_level: 'Entry level'
+  },
+  job_match: {
+    target_role: '',
+    city: '',
+    salary_range: '',
+    platforms: ['boss', 'lagou', 'liepin'],
+    keywords: '',
+    resume_text: ''
+  }
+})
 const forms = reactive(cloneDefaults())
 const activeTask = ref('resume_generate')
 const result = ref('')
@@ -946,7 +971,7 @@ const qrSession = ref(null)
 const applicationStatuses = reactive({})
 let qrPollTimer = null
 
-const candidateName = computed(() => forms.resume_generate.name || 'Candidate')
+const candidateName = computed(() => resumeValue('name'))
 const userInitial = computed(() => {
   const name = currentUser.value?.display_name || currentUser.value?.email || 'AI'
   return String(name).slice(0, 1).toUpperCase()
@@ -962,7 +987,13 @@ const resumeScore = computed(() => {
   if (result.value) score += 17
   return Math.min(score, 100)
 })
-const renderedResult = computed(() => markdownToHtml(result.value))
+const previewMarkdown = computed(() => {
+  if (activeTask.value !== 'resume_generate') {
+    return result.value
+  }
+  return result.value.replace(/^#\s+.+(?:\r?\n)+/, '')
+})
+const renderedResult = computed(() => markdownToHtml(previewMarkdown.value))
 const activeVisualStyle = computed(() => forms.resume_generate.style || forms.resume_beautify.style || 'modern')
 const previewStyleClass = computed(() => `resume-style-${activeVisualStyle.value}`)
 const styleLabel = computed(() => {
@@ -973,14 +1004,6 @@ const styleLabel = computed(() => {
   }
   return labels[activeVisualStyle.value] || t('modern')
 })
-const styleDescriptor = computed(() => {
-  const descriptions = {
-    modern: t('styleModernDescription'),
-    executive: t('styleExecutiveDescription'),
-    'compact-ats': t('styleCompactDescription')
-  }
-  return descriptions[activeVisualStyle.value] || descriptions.modern
-})
 const platformOptions = computed(() => [
   { label: 'Boss直聘', value: 'boss' },
   { label: '拉勾', value: 'lagou' },
@@ -990,10 +1013,10 @@ const platformOptions = computed(() => [
 ])
 const selectedPlatforms = computed(() => forms.job_match.platforms.length ? forms.job_match.platforms : ['boss', 'lagou', 'liepin'])
 const jobMatches = computed(() => {
-  const role = forms.job_match.target_role || forms.resume_generate.target_role || 'Frontend Developer'
+  const role = forms.job_match.target_role || resumeValue('target_role') || 'Frontend Developer'
   const city = forms.job_match.city || 'Remote'
   const salary = forms.job_match.salary_range || 'Market rate'
-  const resumeText = `${forms.job_match.resume_text} ${forms.resume_generate.skills} ${forms.resume_generate.projects}`.toLowerCase()
+  const resumeText = `${forms.job_match.resume_text || buildResumeDraft()} ${resumeValue('skills')} ${projectDraftContent()}`.toLowerCase()
   const keywordHits = ['vue', 'javascript', 'python', 'fastapi', 'sql', 'api', 'ai']
     .filter((keyword) => resumeText.includes(keyword)).length
   const baseScore = Math.min(76 + keywordHits * 3 + (result.value ? 5 : 0), 96)
@@ -1065,16 +1088,16 @@ function t(key) {
   return messages[locale.value]?.[key] || messages.en[key] || key
 }
 
-function isUsingPreset(lang) {
-  const preset = defaultFormPresets[lang] || defaultFormPresets.zh
-  return Object.keys(preset).every((key) => JSON.stringify(forms[key]) === JSON.stringify(preset[key]))
+function resumePlaceholder(field) {
+  return defaultFormPresets[locale.value]?.resume_generate?.[field] || defaultFormPresets.zh.resume_generate[field] || ''
 }
 
-function applyFormPreset(lang) {
-  const preset = cloneDefaults(lang)
-  Object.keys(preset).forEach((key) => {
-    Object.assign(forms[key], preset[key])
-  })
+function resumeValue(field) {
+  const value = forms.resume_generate[field]
+  if (typeof value === 'string') {
+    return value.trim() || resumePlaceholder(field)
+  }
+  return value || resumePlaceholder(field)
 }
 
 function platformLabel(platform) {
@@ -1130,14 +1153,8 @@ function openSidebarShortcut(target) {
 }
 
 function toggleLanguage() {
-  const previousLocale = locale.value
-  const nextLocale = locale.value === 'zh' ? 'en' : 'zh'
-  const shouldSwapPreset = isUsingPreset(previousLocale)
-  locale.value = nextLocale
+  locale.value = locale.value === 'zh' ? 'en' : 'zh'
   localStorage.setItem('resume_locale', locale.value)
-  if (shouldSwapPreset) {
-    applyFormPreset(nextLocale)
-  }
 }
 
 function saveUser(user) {
@@ -1246,16 +1263,7 @@ function stopQrPolling() {
 }
 
 function projectDraftContent() {
-  const sections = [
-    [locale.value === 'zh' ? '项目介绍' : 'Project introduction', forms.resume_generate.project_intro],
-    [locale.value === 'zh' ? '项目架构' : 'Project architecture', forms.resume_generate.project_architecture],
-    [locale.value === 'zh' ? '技术架构' : 'Technical architecture', forms.resume_generate.technical_architecture],
-    [locale.value === 'zh' ? '个人职责' : 'Personal responsibilities', forms.resume_generate.personal_responsibilities]
-  ].filter(([, value]) => value?.trim())
-  if (sections.length) {
-    return sections.map(([title, value]) => `${title}:\n${value}`).join('\n\n')
-  }
-  return forms.resume_generate.projects
+  return resumeValue('projects')
 }
 
 function resumeDraftLabels() {
@@ -1286,16 +1294,16 @@ function buildResumeDraft() {
   }
   const labels = resumeDraftLabels()
   return [
-    `${labels.name}: ${forms.resume_generate.name}`,
-    `${labels.email}: ${forms.resume_generate.email}`,
-    `${labels.phone}: ${forms.resume_generate.phone}`,
-    `${labels.targetRole}: ${forms.resume_generate.target_role}`,
+    `${labels.name}: ${resumeValue('name')}`,
+    `${labels.email}: ${resumeValue('email')}`,
+    `${labels.phone}: ${resumeValue('phone')}`,
+    `${labels.targetRole}: ${resumeValue('target_role')}`,
     '',
-    `${labels.education}:\n${forms.resume_generate.education}`,
+    `${labels.education}:\n${resumeValue('education')}`,
     '',
     `${labels.projects}:\n${projectDraftContent()}`,
     '',
-    `${labels.skills}:\n${forms.resume_generate.skills}`
+    `${labels.skills}:\n${resumeValue('skills')}`
   ].join('\n')
 }
 
@@ -1307,6 +1315,7 @@ function buildJobMatchPayload() {
 }
 
 async function submit() {
+  if (loading.value) return
   loading.value = true
   try {
     let requestTask = activeTask.value
@@ -1315,7 +1324,7 @@ async function submit() {
     }
     const payload = activeTask.value === 'resume_generate'
       ? {
-          target_role: forms.resume_generate.target_role,
+          target_role: resumeValue('target_role'),
           style: forms.resume_generate.style,
           resume_text: buildResumeDraft(),
           output_language: locale.value,
@@ -1345,7 +1354,7 @@ async function submit() {
 }
 
 function resetForm() {
-  Object.assign(forms[activeTask.value], cloneDefaults(locale.value)[activeTask.value])
+  Object.assign(forms[activeTask.value], cloneDefaults()[activeTask.value])
 }
 
 function saveApiKey() {
