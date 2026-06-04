@@ -127,11 +127,11 @@ class AIService:
                 "\n\nSkill section rules:\n"
                 "- Do not output skills as a bare keyword list.\n"
                 "- Respect output_language exactly: zh uses Chinese wording; en uses English wording.\n"
-                "- Convert keyword input into standard resume skill bullets.\n"
-                "- Sort skills from more important/difficult to easier/supporting skills.\n"
-                "- Group related skills together, but write each individual skill as its own bullet line.\n"
-                "- For zh, use wording like 熟练掌握 X, 熟悉 Y, 了解 Z, 具备 W 能力.\n"
-                "- For en, use wording like Proficient in X, Experienced with Y, Familiar with Z, Strong W capability.\n"
+                "- Convert keyword input into concise grouped skill bullets; do not add generic ability descriptions.\n"
+                "- Sort and group skills by importance: frameworks first, middleware/data components second, languages third, engineering tools last.\n"
+                "- Put multiple frameworks in one framework bullet and multiple middleware/data components in one middleware bullet.\n"
+                "- For zh, start each bullet directly with 掌握, 熟悉, or 了解. Do not use 具备, 能够, 根据, 结合, or long explanatory clauses.\n"
+                "- For en, use concise forms like Proficient in frameworks: Vue, React. Familiar with middleware and data components: Redis, MySQL.\n"
             )
         if task_type in {TaskType.resume_generate, TaskType.resume_beautify}:
             style_note += (
@@ -206,11 +206,11 @@ class AIService:
             extracted_skills = self._extract_skills_from_resume_text(model.resume_text)
             revised_content = self._remove_skills_from_resume_text(model.resume_text) if extracted_skills else model.resume_text
             skills_section = self._format_skills_section(extracted_skills, language) if extracted_skills else (
-                "- Proficient in role-relevant core tools, with the ability to apply them in project delivery.\n"
-                "- Experienced with requirement breakdown, issue diagnosis, and result review."
+                "- Proficient in role-relevant frameworks.\n"
+                "- Familiar with engineering tools."
                 if language == "en"
-                else "- 熟练掌握目标岗位所需的核心工具与方法，能够结合项目场景完成实际交付。\n"
-                "- 熟悉业务需求拆解、问题定位和结果复盘，具备持续优化简历表达的能力。"
+                else "- 掌握目标岗位相关框架。\n"
+                "- 熟悉工程协作工具。"
             )
             return self._clean_markdown(
                 f"""
@@ -236,11 +236,11 @@ class AIService:
             refined_content = self._remove_skills_from_resume_text(model.resume_text) if extracted_skills else model.resume_text
             resume_parts = self._extract_resume_parts(model.resume_text)
             skills_section = self._format_skills_section(extracted_skills, language) if extracted_skills else (
-                "- Proficient in the target role's core toolchain, with the ability to complete development, debugging, and delivery independently.\n"
-                "- Experienced with team collaboration workflows and project review practices."
+                "- Proficient in role-relevant frameworks.\n"
+                "- Familiar with engineering tools."
                 if language == "en"
-                else "- 熟练掌握目标岗位相关工具链，能够独立完成基础功能开发、调试和交付。\n"
-                "- 熟悉团队协作流程和项目复盘方法，具备清晰沟通与快速学习能力。"
+                else "- 掌握目标岗位相关框架。\n"
+                "- 熟悉工程协作工具。"
             )
             skills_title = "Skills" if language == "en" else "专业技能"
             education_title = "Education" if language == "en" else "教育经历"
@@ -457,7 +457,7 @@ class AIService:
                 if parts["architecture"] or parts["technical"]:
                     bullets.append(f"- Designed and implemented the solution using {self._join_sentence_parts([parts['architecture'], parts['technical']], language)}.")
                 if parts["responsibilities"]:
-                    bullets.append(f"- Owned {self._strip_leading_terms(parts['responsibilities'], ['Owned', 'Responsible for'])}")
+                    bullets.extend(self._format_responsibility_bullets(parts["responsibilities"], language))
             else:
                 bullets = []
                 if parts["intro"]:
@@ -465,7 +465,7 @@ class AIService:
                 if parts["architecture"] or parts["technical"]:
                     bullets.append(f"- 基于{self._join_sentence_parts([parts['architecture'], parts['technical']], language)}，完成系统方案设计与落地。")
                 if parts["responsibilities"]:
-                    bullets.append(f"- 主要负责{self._strip_leading_terms(parts['responsibilities'], ['主要负责', '负责'])}")
+                    bullets.extend(self._format_responsibility_bullets(parts["responsibilities"], language))
             return "\n".join(bullets)
         return self._compact_project_content(getattr(model, "projects", ""), language)
 
@@ -487,7 +487,7 @@ class AIService:
                 if fields["architecture"] or fields["technical"]:
                     bullets.append(f"- Implemented the technical solution with {self._join_sentence_parts([fields['architecture'], fields['technical']], language)}.")
                 if fields["responsibilities"]:
-                    bullets.append(f"- Owned {self._strip_leading_terms(fields['responsibilities'], ['Owned', 'Responsible for'])}")
+                    bullets.extend(self._format_responsibility_bullets(fields["responsibilities"], language))
             else:
                 bullets = []
                 if fields["intro"]:
@@ -495,11 +495,13 @@ class AIService:
                 if fields["architecture"] or fields["technical"]:
                     bullets.append(f"- 基于{self._join_sentence_parts([fields['architecture'], fields['technical']], language)}，完成前后端方案落地。")
                 if fields["responsibilities"]:
-                    bullets.append(f"- 主要负责{self._strip_leading_terms(fields['responsibilities'], ['主要负责', '负责'])}")
+                    bullets.extend(self._format_responsibility_bullets(fields["responsibilities"], language))
             return "\n".join(bullets)
         if "\n" in clean:
             lines = [line.strip(" -•\t") for line in clean.splitlines() if line.strip()]
             return "\n".join(self._format_project_line(line, language) for line in lines[:8])
+        if ":" in clean or "：" in clean:
+            return self._format_project_line(clean, language)
         segments = [segment.strip() for segment in re.split(r"[；;]\s*", clean) if segment.strip()]
         if len(segments) > 1:
             return "\n".join(f"- {self._format_plain_project_segment(segment, language)}" for segment in segments[:4])
@@ -520,7 +522,12 @@ class AIService:
             return f"- {self._ensure_sentence_end(clean, language)}"
         if name and len(segments) > 1:
             first_line = f"- **{name}:** {self._format_plain_project_segment(segments[0], language)}"
-            detail_lines = [f"- {self._format_plain_project_segment(segment, language)}" for segment in segments[1:4]]
+            detail_lines: list[str] = []
+            for index, segment in enumerate(segments[1:4], start=1):
+                if index >= 2:
+                    detail_lines.extend(self._format_responsibility_bullets(segment, language))
+                else:
+                    detail_lines.append(f"- {self._format_plain_project_segment(segment, language)}")
             return "\n".join([first_line, *detail_lines])
         if name:
             return f"- **{name}:** {self._format_plain_project_segment(segments[0], language)}"
@@ -537,6 +544,28 @@ class AIService:
         if language == "zh":
             clean = re.sub(r"^个人负责", "负责", clean)
         return self._ensure_sentence_end(clean, language)
+
+    def _format_responsibility_bullets(self, text: str, language: str) -> list[str]:
+        clean = self._strip_leading_terms(
+            text,
+            ["Owned", "Responsible for", "主要负责", "负责", "个人负责"],
+        )
+        parts = [
+            part.strip(" .。；;，,、")
+            for part in re.split(r"[；;\n]|、|，|,\s+(?=\w)|和|及|与|\s+and\s+", clean, flags=re.IGNORECASE)
+            if part.strip(" .。；;，,、")
+        ]
+        if len(parts) <= 1:
+            prefix = "Owned" if language == "en" else "负责"
+            return [f"- {prefix}{self._ensure_responsibility_text(parts[0] if parts else clean, language)}"]
+        prefix = "Owned" if language == "en" else "负责"
+        return [f"- {prefix}{self._ensure_responsibility_text(part, language)}" for part in parts[:5]]
+
+    def _ensure_responsibility_text(self, text: str, language: str) -> str:
+        clean = self._ensure_sentence_end(text, language)
+        if language == "en":
+            return f" {clean[0].lower()}{clean[1:]}" if clean else ""
+        return clean
 
     def _ensure_sentence_end(self, text: str, language: str) -> str:
         clean = text.strip()
@@ -560,33 +589,50 @@ class AIService:
         skills = self._sort_skill_keywords(self._split_skill_keywords(raw_skills))
         if not skills:
             return (
-                "- Proficient in role-relevant core skills, with the ability to apply them in project delivery."
+                "- Proficient in role-relevant frameworks and tools."
                 if language == "en"
-                else "- 熟练掌握岗位相关核心技能，能够结合项目需求完成落地交付。"
+                else "- 熟悉岗位相关框架和工具。"
             )
 
-        bullets: list[str] = []
+        grouped: dict[str, list[str]] = {
+            "framework": [],
+            "middleware": [],
+            "language": [],
+            "tool": [],
+            "other": [],
+        }
         for skill in skills:
-            category = self._skill_category(skill)
-            if language == "en":
-                if category in {"language", "frontend"}:
-                    bullets.append(f"- Proficient in {skill}, with practical experience applying it to feature development and delivery.")
-                elif category in {"backend", "database"}:
-                    bullets.append(f"- Experienced with {skill}, including API integration, data interaction, or backend collaboration scenarios.")
-                elif category in {"devops", "tool"}:
-                    bullets.append(f"- Familiar with {skill}, and able to use it effectively in development, debugging, and team workflows.")
-                else:
-                    bullets.append(f"- Strong {skill} capability, with solid learning, collaboration, and delivery awareness.")
-            else:
-                if category in {"language", "frontend"}:
-                    bullets.append(f"- 熟练掌握 {skill}，能够结合业务需求完成页面开发、功能实现和交付优化。")
-                elif category in {"backend", "database"}:
-                    bullets.append(f"- 熟悉 {skill}，理解接口协作、数据处理和后端联调等常见项目场景。")
-                elif category in {"devops", "tool"}:
-                    bullets.append(f"- 了解 {skill}，能够在开发调试、版本管理和团队协作流程中高效使用。")
-                else:
-                    bullets.append(f"- 具备 {skill} 相关能力，能够根据项目需要快速学习并落地应用。")
+            grouped[self._skill_group(skill)].append(skill)
+        bullets: list[str] = []
+        if language == "en":
+            labels = {
+                "framework": "Proficient in frameworks",
+                "middleware": "Familiar with middleware and data components",
+                "language": "Proficient in languages",
+                "tool": "Familiar with engineering tools",
+                "other": "Familiar with",
+            }
+            order = ["framework", "middleware", "language", "tool", "other"]
+            for group in order:
+                if grouped[group]:
+                    bullets.append(f"- {labels[group]}: {self._join_skill_names(grouped[group], language)}.")
+        else:
+            labels = {
+                "framework": "掌握",
+                "middleware": "熟悉",
+                "language": "掌握",
+                "tool": "熟悉",
+                "other": "了解",
+            }
+            order = ["framework", "middleware", "language", "tool", "other"]
+            for group in order:
+                if grouped[group]:
+                    bullets.append(f"- {labels[group]} {self._join_skill_names(grouped[group], language)}。")
         return "\n".join(bullets)
+
+    def _join_skill_names(self, skills: list[str], language: str) -> str:
+        separator = ", " if language == "en" else "、"
+        return separator.join(skills)
 
     def _split_skill_keywords(self, raw_skills: str) -> list[str]:
         cleaned = re.sub(r"[*#`>-]", " ", raw_skills)
@@ -603,7 +649,19 @@ class AIService:
         return skills[:12]
 
     def _sort_skill_keywords(self, skills: list[str]) -> list[str]:
-        return sorted(skills, key=lambda skill: (self._category_rank(self._skill_category(skill)), self._skill_rank(skill), skill.lower()))
+        return sorted(skills, key=lambda skill: (self._group_rank(self._skill_group(skill)), self._skill_rank(skill), skill.lower()))
+
+    def _skill_group(self, skill: str) -> str:
+        category = self._skill_category(skill)
+        if category in {"frontend", "backend"}:
+            return "framework"
+        if category in {"database", "middleware"}:
+            return "middleware"
+        if category == "language":
+            return "language"
+        if category in {"devops", "tool"}:
+            return "tool"
+        return "other"
 
     def _skill_category(self, skill: str) -> str:
         key = self._skill_key(skill)
@@ -612,7 +670,8 @@ class AIService:
             "frontend": {"vue", "vue.js", "vue3", "react", "react.js", "angular", "html", "css", "sass", "less", "tailwind", "element plus", "element-plus", "vite", "webpack"},
             "backend": {"fastapi", "django", "flask", "node", "node.js", "express", "spring", "spring boot", "rest api", "restful api", "graphql"},
             "database": {"sql", "mysql", "postgresql", "postgres", "mongodb", "redis", "sqlite", "elasticsearch"},
-            "devops": {"docker", "kubernetes", "k8s", "linux", "nginx", "ci/cd", "github actions", "jenkins"},
+            "middleware": {"rabbitmq", "kafka", "rocketmq", "nginx", "elasticsearch", "redis", "mysql", "postgresql", "postgres", "mongodb"},
+            "devops": {"docker", "kubernetes", "k8s", "linux", "ci/cd", "github actions", "jenkins"},
             "tool": {"git", "github", "gitlab", "figma", "postman", "jira", "notion", "excel"},
         }
         for category, values in categories.items():
@@ -620,40 +679,50 @@ class AIService:
                 return category
         return "other"
 
-    def _category_rank(self, category: str) -> int:
+    def _group_rank(self, group: str) -> int:
         ranks = {
-            "language": 0,
-            "frontend": 1,
-            "backend": 2,
-            "database": 3,
-            "devops": 4,
-            "tool": 5,
-            "other": 6,
+            "framework": 0,
+            "middleware": 1,
+            "language": 2,
+            "tool": 3,
+            "other": 4,
         }
-        return ranks.get(category, 9)
+        return ranks.get(group, 9)
 
     def _skill_rank(self, skill: str) -> int:
         key = self._skill_key(skill)
         ranks = {
-            "javascript": 0,
-            "typescript": 1,
-            "python": 2,
-            "java": 3,
             "vue": 0,
             "vue.js": 0,
             "vue3": 0,
             "react": 1,
             "react.js": 1,
-            "html": 8,
-            "css": 9,
-            "fastapi": 0,
-            "node.js": 1,
-            "node": 1,
-            "sql": 0,
+            "angular": 2,
+            "element plus": 3,
+            "element-plus": 3,
+            "fastapi": 4,
+            "spring boot": 5,
+            "spring": 5,
+            "node.js": 6,
+            "node": 6,
+            "django": 7,
+            "flask": 8,
+            "redis": 0,
             "mysql": 1,
             "postgresql": 2,
-            "redis": 3,
+            "postgres": 2,
+            "mongodb": 3,
+            "nginx": 4,
+            "kafka": 5,
+            "rabbitmq": 6,
+            "javascript": 0,
+            "typescript": 1,
+            "python": 2,
+            "java": 3,
             "git": 0,
+            "github": 1,
+            "docker": 2,
+            "postman": 3,
         }
         return ranks.get(key, 20)
 
