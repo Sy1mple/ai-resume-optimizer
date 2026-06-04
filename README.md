@@ -8,6 +8,16 @@ Production deployment:
 
 https://ai-resume-optimizer-coral.vercel.app/
 
+## Screenshots
+
+Login screen:
+
+![Login screen](docs/screenshots/login-screen.png)
+
+Main workspace:
+
+![Main workspace](docs/screenshots/workspace-screen.png)
+
 ## Features
 
 - Resume generation: Create a professional resume from name, target role, education, project experience, and skill keywords.
@@ -44,37 +54,52 @@ The job matching feature generates compliant recommendations and application pla
 
 ```text
 .
-├── api/
-│   └── index.py                  # Vercel Python Function entry
-├── backend/
-│   ├── app/
-│   │   ├── main.py               # FastAPI routes
-│   │   ├── models.py             # Request and response models
-│   │   └── services/
-│   │       ├── ai_service.py     # Resume generation, optimization, and job matching
-│   │       ├── export_service.py # PDF, Word, and text export
-│   │       └── history_store.py  # History storage
-│   ├── requirements.txt
-│   └── .env.example
-├── frontend/
-│   ├── src/
-│   │   ├── App.vue               # Main application UI
-│   │   ├── api.js                # Frontend API wrapper
-│   │   ├── main.js
-│   │   └── styles.css
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js
-├── docs/
-├── pyproject.toml
-├── requirements.txt
-├── vercel.json
-└── README.md
+|-- api/
+|   `-- index.py                  # Vercel Python Function entry
+|-- backend/
+|   |-- app/
+|   |   |-- main.py               # FastAPI routes
+|   |   |-- models.py             # Request and response models
+|   |   `-- services/
+|   |       |-- ai_service.py     # Resume generation, optimization, and job matching
+|   |       |-- export_service.py # PDF, Word, and text export
+|   |       `-- history_store.py  # History storage
+|   |-- requirements.txt
+|   `-- .env.example
+|-- frontend/
+|   |-- src/
+|   |   |-- App.vue               # Main application UI
+|   |   |-- api.js                # Frontend API wrapper
+|   |   |-- main.js
+|   |   `-- styles.css
+|   |-- index.html
+|   |-- package.json
+|   `-- vite.config.js
+|-- docs/
+|   `-- screenshots/
+|       |-- login-screen.png
+|       `-- workspace-screen.png
+|-- pyproject.toml
+|-- requirements.txt
+|-- vercel.json
+`-- README.md
 ```
 
-## Local Development
+## How to Run
 
-### 1. Start the Backend
+### Option 1: Use the Hosted Version
+
+Open the production app directly:
+
+```text
+https://ai-resume-optimizer-coral.vercel.app/
+```
+
+This is the fastest way to try the product. No local setup is required.
+
+### Option 2: Run Locally
+
+Start the backend first:
 
 ```bash
 cd backend
@@ -91,7 +116,7 @@ Default backend URL:
 http://localhost:8000
 ```
 
-### 2. Start the Frontend
+Then start the frontend in another terminal:
 
 ```bash
 cd frontend
@@ -104,6 +129,15 @@ Default frontend URL:
 ```text
 http://127.0.0.1:5173
 ```
+
+### Local Run Checklist
+
+1. Start the backend at `http://localhost:8000`.
+2. Start the frontend at `http://127.0.0.1:5173`.
+3. Open the frontend URL in a browser.
+4. Log in with the demo email verification flow, or use the QR-code demo login.
+5. Fill in resume details and click `Generate`.
+6. Export the generated resume as PDF, DOCX, Markdown, or TXT.
 
 ## Environment Variables
 
