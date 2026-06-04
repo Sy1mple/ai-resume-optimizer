@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import random
-import socket
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -240,14 +239,9 @@ def _public_base_url(request: Request) -> str:
     configured = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
     if configured:
         return configured
-    port = request.url.port or 8000
-    return f"http://{_local_ip()}:{port}"
-
-
-def _local_ip() -> str:
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            sock.connect(("8.8.8.8", 80))
-            return sock.getsockname()[0]
-    except OSError:
-        return "127.0.0.1"
+    forwarded_host = request.headers.get("x-forwarded-host")
+    forwarded_proto = request.headers.get("x-forwarded-proto", "https" if forwarded_host else request.url.scheme)
+    if forwarded_host:
+        return f"{forwarded_proto}://{forwarded_host}"
+    port = f":{request.url.port}" if request.url.port else ""
+    return f"{request.url.scheme}://{request.url.hostname}{port}"
