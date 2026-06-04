@@ -172,7 +172,7 @@
           <Refresh />
           <span>
             <b>{{ t('history') }}</b>
-            <small>{{ history.length }} {{ t('records') }}</small>
+            <small>{{ visibleHistory.length }} {{ t('records') }}</small>
           </span>
         </button>
       </nav>
@@ -324,24 +324,6 @@
                 </el-form-item>
               </template>
 
-              <template v-if="activeTask === 'interview_questions'">
-                <div class="grid-2">
-                  <el-form-item :label="t('jobTitle')">
-                    <el-input v-model="forms.interview_questions.job_title" :placeholder="t('interviewRolePlaceholder')" />
-                  </el-form-item>
-                  <el-form-item :label="t('experienceLevel')">
-                    <el-select v-model="forms.interview_questions.experience_level">
-                      <el-option :label="t('entryLevel')" value="Entry level" />
-                      <el-option :label="t('midLevel')" value="Mid level" />
-                      <el-option :label="t('seniorLevel')" value="Senior level" />
-                    </el-select>
-                  </el-form-item>
-                </div>
-                <el-form-item :label="t('technicalDirection')">
-                  <el-input v-model="forms.interview_questions.technical_direction" :placeholder="t('technicalDirectionPlaceholder')" />
-                </el-form-item>
-              </template>
-
               <template v-if="activeTask === 'job_match'">
                 <div class="grid-2">
                   <el-form-item :label="t('targetRole')">
@@ -484,7 +466,7 @@
           </div>
           <el-button :icon="Refresh" circle :loading="historyLoading" @click="loadHistory" />
         </div>
-        <el-table :data="history" class="history-table" :empty-text="t('noHistory')">
+        <el-table :data="visibleHistory" class="history-table" :empty-text="t('noHistory')">
           <el-table-column :label="t('task')" min-width="160">
             <template #default="{ row }">
               {{ formatTaskType(row.task_type) }}
@@ -648,7 +630,7 @@ const messages = {
     wordDocx: 'Word DOCX',
     markdown: 'Markdown',
     plainText: 'Plain text',
-    emptyPreview: 'Generate a resume or interview kit to preview it here.',
+    emptyPreview: 'Generate a resume to preview it here.',
     history: 'History',
     recentGenerations: 'Recent generations',
     noHistory: 'No history yet',
@@ -659,7 +641,6 @@ const messages = {
     taskGenerate: 'Generate & Optimize',
     taskOptimize: 'Optimize & Style',
     taskBeautify: 'Beautify',
-    taskInterview: 'Interview',
     taskJobMatch: 'Job Match',
     resumeGenerator: 'Resume generator and optimizer',
     resumeGeneratorSubtitle: 'Create, rewrite, and style a recruiter-ready resume in one place.',
@@ -669,8 +650,6 @@ const messages = {
     resumeOptimizerSubtitle: 'Rewrite, strengthen, and format resume text in one workflow.',
     oneClickBeautifier: 'One-click beautifier',
     oneClickBeautifierSubtitle: 'Turn the current draft into a polished, formatted resume layout.',
-    interviewCoach: 'Interview coach',
-    interviewCoachSubtitle: 'Prepare technical and behavioral questions with reference answers.',
     styleModernDescription: 'Editorial spacing, color accents, portfolio-ready rhythm',
     styleExecutiveDescription: 'Formal typography, strong contrast, leadership framing',
     styleCompactDescription: 'Dense structure, monochrome hierarchy, scanner-friendly',
@@ -711,7 +690,6 @@ const messages = {
     channels: 'Channels',
     navGenerateSubtitle: 'Resume drafting',
     navMatchSubtitle: 'Job delivery',
-    navInterviewSubtitle: 'Interview prep',
     noExportYet: 'Generate content before exporting'
   },
   zh: {
@@ -816,7 +794,7 @@ const messages = {
     wordDocx: 'Word DOCX',
     markdown: 'Markdown',
     plainText: '纯文本',
-    emptyPreview: '生成简历或面试题后，会在这里预览。',
+    emptyPreview: '生成简历后，会在这里预览。',
     history: '历史记录',
     recentGenerations: '最近生成',
     noHistory: '暂无历史记录',
@@ -827,7 +805,6 @@ const messages = {
     taskGenerate: '生成优化',
     taskOptimize: '优化美化',
     taskBeautify: '美化',
-    taskInterview: '面试',
     taskJobMatch: '岗位匹配',
     resumeGenerator: '简历生成优化',
     resumeGeneratorSubtitle: '在一个入口里完成生成、改写、强化和版式风格整理。',
@@ -837,8 +814,6 @@ const messages = {
     resumeOptimizerSubtitle: '一次完成内容改写、表达强化和版式风格整理。',
     oneClickBeautifier: '一键美化',
     oneClickBeautifierSubtitle: '把当前草稿整理成更精致的版式和表达。',
-    interviewCoach: '面试助手',
-    interviewCoachSubtitle: '生成技术题、行为题和参考回答。',
     styleModernDescription: '留白更舒适，带强调色，适合作品集式展示',
     styleExecutiveDescription: '正式排版，高对比，突出职业感和领导力表达',
     styleCompactDescription: '高密度、黑白结构，更适合 ATS 扫描',
@@ -879,7 +854,6 @@ const messages = {
     channels: '渠道',
     navGenerateSubtitle: '简历生成优化',
     navMatchSubtitle: '岗位匹配投放',
-    navInterviewSubtitle: '面试题准备',
     noExportYet: '请先生成内容再导出'
   }
 }
@@ -908,11 +882,6 @@ const defaultFormPresets = {
       style: 'modern',
       resume_text: '请先生成或粘贴简历内容，然后进行优化和排版。',
       photo_included: false
-    },
-    interview_questions: {
-      job_title: '前端开发实习生',
-      technical_direction: 'Vue 3、JavaScript、REST API、浏览器性能优化',
-      experience_level: 'Entry level'
     },
     job_match: {
       target_role: '前端开发工程师',
@@ -945,11 +914,6 @@ const defaultFormPresets = {
       style: 'modern',
       resume_text: 'Paste or generate a resume first, then use this tool to make it cleaner and more polished.',
       photo_included: false
-    },
-    interview_questions: {
-      job_title: 'Frontend Developer Intern',
-      technical_direction: 'Vue 3, JavaScript, REST APIs, browser performance',
-      experience_level: 'Entry level'
     },
     job_match: {
       target_role: 'Frontend Developer',
@@ -1011,11 +975,6 @@ const cloneDefaults = () => ({
     resume_text: '',
     photo_included: false
   },
-  interview_questions: {
-    job_title: '',
-    technical_direction: '',
-    experience_level: 'Entry level'
-  },
   job_match: {
     target_role: '',
     city: '',
@@ -1033,6 +992,7 @@ const loading = ref(false)
 const exporting = ref(false)
 const historyLoading = ref(false)
 const history = ref([])
+const visibleHistory = computed(() => history.value.filter((record) => record.task_type !== 'interview_questions'))
 const openaiApiKey = ref(sessionStorage.getItem('resume_openai_api_key') || '')
 const apiKeyDraft = ref(openaiApiKey.value)
 const apiDialogVisible = ref(false)
@@ -1124,8 +1084,7 @@ const appliedCount = computed(() => Object.values(applicationStatuses).filter((s
 
 const taskOptions = computed(() => [
   { label: t('taskGenerate'), value: 'resume_generate' },
-  { label: t('taskJobMatch'), value: 'job_match' },
-  { label: t('taskInterview'), value: 'interview_questions' }
+  { label: t('taskJobMatch'), value: 'job_match' }
 ])
 const sideNavItems = computed(() => [
   {
@@ -1141,13 +1100,6 @@ const sideNavItems = computed(() => [
     subtitle: t('navMatchSubtitle'),
     metric: `${jobMatchScore.value}%`,
     icon: Briefcase
-  },
-  {
-    value: 'interview_questions',
-    label: t('taskInterview'),
-    subtitle: t('navInterviewSubtitle'),
-    metric: forms.interview_questions.experience_level,
-    icon: UserFilled
   }
 ])
 
@@ -1156,11 +1108,6 @@ const taskMeta = computed(() => ({
     title: t('resumeGenerator'),
     subtitle: t('resumeGeneratorSubtitle'),
     icon: DocumentChecked
-  },
-  interview_questions: {
-    title: t('interviewCoach'),
-    subtitle: t('interviewCoachSubtitle'),
-    icon: UserFilled
   },
   job_match: {
     title: t('jobMatchStudio'),
@@ -1468,9 +1415,6 @@ async function submit() {
       : activeTask.value === 'job_match'
         ? buildJobMatchPayload()
       : { ...forms[activeTask.value] }
-    if (activeTask.value === 'interview_questions') {
-      payload.experience_level = payload.experience_level || 'Entry level'
-    }
     const provider = openaiApiKey.value ? 'openai' : 'free'
     const response = await generateContent(requestTask, payload, provider, openaiApiKey.value)
     result.value = response.content
